@@ -432,3 +432,33 @@ label {
     padding: 6px 10px;
   }
 }
+
+/* Force mobile layout */
+@media (max-width: 991px) {
+  .main-sidebar {
+    transform: translateX(-250px);
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar-open .main-sidebar {
+    transform: translateX(0);
+  }
+
+  .content-wrapper {
+    margin-left: 0 !important;
+  }
+
+  .main-footer {
+    margin-left: 0 !important;
+  }
+}
+
+/* Prevent iOS zoom on input focus */
+input, select, textarea {
+  font-size: 16px !important;
+}
+
+/* Fix mobile table overflow */
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+}
