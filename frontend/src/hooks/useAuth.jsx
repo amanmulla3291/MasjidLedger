@@ -9,44 +9,71 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession()
-      .then(async ({ data: { session } }) => {
-        if (session?.user) {
-          await handleUser(session.user)
-        }
-        setLoading(false)
-      })
-      .catch(() => setLoading(false))
+    let mounted = true
 
-    // Listen for auth changes
+    async function initSession() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!mounted) return
+
+        if (session?.user) {
+          await handleUser(session.user, mounted)
+        } else {
+          if (mounted) setLoading(false)
+        }
+      } catch {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    initSession()
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === 'SIGNED_IN' && session?.user) {
-        await handleUser(session.user)
-      } else if (event === 'SIGNED_OUT') {
+      if (!mounted) return
+
+      if (event === 'SIGNED_OUT') {
         setUser(null)
-      } else if (event === 'INITIAL_SESSION') {
         setLoading(false)
+        return
+      }
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        // Only handle if user is not already set to avoid loop
+        if (user?.id !== session.user.id) {
+          await handleUser(session.user, mounted)
+        }
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
-  async function handleUser(authUser) {
+  async function handleUser(authUser, mounted = true) {
     const email = authUser.email
 
     if (!isWhitelisted(email)) {
       toast.error('Access denied. This application is private.')
       await signOut()
-      setUser(null)
-      setLoading(false)
+      if (mounted) {
+        setUser(null)
+        setLoading(false)
+      }
       return
     }
 
-    await upsertUser(authUser)
-    setUser(authUser)
-    setLoading(false)
+    try {
+      await upsertUser(authUser)
+    } catch {
+      // Non-fatal, continue
+    }
+
+    if (mounted) {
+      setUser(authUser)
+      setLoading(false)
+    }
   }
 
   return (
