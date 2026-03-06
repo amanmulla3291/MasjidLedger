@@ -18,6 +18,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export const WHITELISTED_EMAILS = [
   'amanmulla.aws@gmail.com',
   'altabmulla36@gmail.com',
+  'pjilani4566@gmail.com',
 ]
 
 export function isWhitelisted(email) {
