@@ -1,0 +1,434 @@
+/* ============================================================
+   MASJID LEDGER - GLOBAL STYLES
+   ============================================================ */
+
+:root {
+  --masjid-green: #1a5c2a;
+  --masjid-green-light: #2e7d46;
+  --masjid-gold: #c9a227;
+  --masjid-gold-light: #e8c35a;
+  --masjid-cream: #f8f4e8;
+  --danger-red: #b71c1c;
+  --sidebar-bg: #1a2035;
+  --sidebar-hover: #253050;
+  --font-body: 'IBM Plex Sans', sans-serif;
+  --font-display: 'Amiri', serif;
+}
+
+body {
+  font-family: var(--font-body) !important;
+  background-color: #f0f2f5;
+}
+
+/* ============================================================
+   SIDEBAR
+   ============================================================ */
+.main-sidebar {
+  background: var(--sidebar-bg) !important;
+}
+
+.main-sidebar .brand-link {
+  background: rgba(201, 162, 39, 0.15) !important;
+  border-bottom: 1px solid rgba(201, 162, 39, 0.3) !important;
+  padding: 14px 16px !important;
+}
+
+.brand-text {
+  font-family: var(--font-display) !important;
+  font-size: 1.3rem !important;
+  color: var(--masjid-gold) !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.03em;
+}
+
+.nav-sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.7) !important;
+  border-radius: 6px !important;
+  margin: 2px 8px !important;
+  padding: 10px 14px !important;
+  transition: all 0.2s ease !important;
+}
+
+.nav-sidebar .nav-link:hover,
+.nav-sidebar .nav-link.active {
+  background: rgba(201, 162, 39, 0.15) !important;
+  color: var(--masjid-gold) !important;
+}
+
+.nav-sidebar .nav-link .nav-icon {
+  color: inherit !important;
+  width: 1.2rem !important;
+}
+
+.nav-sidebar .nav-header {
+  color: rgba(201, 162, 39, 0.5) !important;
+  font-size: 0.68rem !important;
+  letter-spacing: 0.12em !important;
+  font-weight: 600 !important;
+  padding: 10px 14px 4px !important;
+  text-transform: uppercase !important;
+}
+
+/* ============================================================
+   NAVBAR
+   ============================================================ */
+.main-header.navbar {
+  background: #fff !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06) !important;
+}
+
+.main-header .navbar-brand {
+  font-family: var(--font-display) !important;
+  color: var(--masjid-green) !important;
+  font-size: 1.2rem !important;
+}
+
+/* ============================================================
+   INFO BOXES / CARDS
+   ============================================================ */
+.info-box {
+  border-radius: 10px !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07) !important;
+  border: none !important;
+  overflow: hidden !important;
+}
+
+.info-box-icon {
+  border-radius: 0 !important;
+  width: 70px !important;
+  font-size: 1.6rem !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.info-box-number {
+  font-size: 1.35rem !important;
+  font-weight: 700 !important;
+  font-family: var(--font-body) !important;
+}
+
+.info-box-text {
+  font-size: 0.78rem !important;
+  font-weight: 500 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.05em !important;
+  color: #6b7280 !important;
+}
+
+/* ============================================================
+   CARDS
+   ============================================================ */
+.card {
+  border-radius: 10px !important;
+  border: none !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07) !important;
+}
+
+.card-header {
+  border-radius: 10px 10px 0 0 !important;
+  border-bottom: 1px solid rgba(0,0,0,0.07) !important;
+  font-weight: 600 !important;
+  background: #fff !important;
+}
+
+.card-header.bg-success,
+.card-header.bg-green {
+  background: var(--masjid-green) !important;
+}
+
+/* ============================================================
+   BUTTONS
+   ============================================================ */
+.btn-success,
+.btn-primary {
+  background: var(--masjid-green) !important;
+  border-color: var(--masjid-green) !important;
+  border-radius: 6px !important;
+  font-weight: 500 !important;
+}
+
+.btn-success:hover,
+.btn-primary:hover {
+  background: var(--masjid-green-light) !important;
+  border-color: var(--masjid-green-light) !important;
+}
+
+.btn-warning {
+  background: var(--masjid-gold) !important;
+  border-color: var(--masjid-gold) !important;
+  color: #fff !important;
+  border-radius: 6px !important;
+}
+
+.btn-danger {
+  background: var(--danger-red) !important;
+  border-color: var(--danger-red) !important;
+  border-radius: 6px !important;
+}
+
+/* ============================================================
+   DENOMINATION COUNTER
+   ============================================================ */
+.denomination-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+.denomination-item {
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.denomination-item:hover {
+  border-color: var(--masjid-green);
+  background: #f0fdf4;
+}
+
+.denomination-label {
+  font-size: 0.75rem;
+  color: #6b7280;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 6px;
+}
+
+.denomination-note {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--masjid-green);
+  margin-bottom: 8px;
+}
+
+.denomination-subtotal {
+  font-size: 0.8rem;
+  color: #374151;
+  font-weight: 500;
+  margin-top: 4px;
+}
+
+.denomination-total-banner {
+  background: linear-gradient(135deg, var(--masjid-green), var(--masjid-green-light));
+  color: #fff;
+  border-radius: 8px;
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.denomination-total-banner .total-label {
+  font-size: 0.8rem;
+  opacity: 0.85;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.denomination-total-banner .total-amount {
+  font-size: 1.6rem;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+
+/* ============================================================
+   TABLE
+   ============================================================ */
+.table th {
+  font-size: 0.75rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  color: #6b7280 !important;
+  font-weight: 600 !important;
+  border-top: none !important;
+  padding: 10px 12px !important;
+  background: #f9fafb !important;
+}
+
+.table td {
+  vertical-align: middle !important;
+  padding: 10px 12px !important;
+  font-size: 0.9rem !important;
+}
+
+.amount-positive { color: #15803d; font-weight: 600; }
+.amount-negative { color: #b91c1c; font-weight: 600; }
+.amount-balance  { color: #1d4ed8; font-weight: 700; }
+
+/* ============================================================
+   FORM STYLES
+   ============================================================ */
+.form-control, .form-select {
+  border-radius: 6px !important;
+  border-color: #d1d5db !important;
+  font-size: 0.9rem !important;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: var(--masjid-green) !important;
+  box-shadow: 0 0 0 3px rgba(26, 92, 42, 0.12) !important;
+}
+
+label {
+  font-size: 0.8rem !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.04em !important;
+  margin-bottom: 4px !important;
+}
+
+/* ============================================================
+   IMAGE UPLOAD
+   ============================================================ */
+.upload-zone {
+  border: 2px dashed #d1d5db;
+  border-radius: 8px;
+  padding: 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  background: #fafafa;
+}
+
+.upload-zone:hover {
+  border-color: var(--masjid-green);
+  background: #f0fdf4;
+}
+
+.upload-zone.has-file {
+  border-color: var(--masjid-green);
+  background: #f0fdf4;
+}
+
+/* ============================================================
+   LEDGER TABLE
+   ============================================================ */
+.ledger-row-income td { background: #f0fdf4 !important; }
+.ledger-row-expense td { background: #fff5f5 !important; }
+
+/* ============================================================
+   MONTH GROUP HEADER
+   ============================================================ */
+.month-group-header {
+  background: linear-gradient(135deg, var(--masjid-green), var(--masjid-green-light));
+  color: #fff;
+  padding: 10px 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  margin-top: 20px;
+}
+
+.month-group-header h6 {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  margin: 0;
+  font-weight: 700;
+}
+
+/* ============================================================
+   LOGIN PAGE
+   ============================================================ */
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0f1a1c 0%, #1a2e20 50%, #0d1a0f 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-card {
+  background: rgba(255,255,255,0.05);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(201, 162, 39, 0.2);
+  border-radius: 16px;
+  padding: 48px 40px;
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+
+.login-logo {
+  font-family: var(--font-display);
+  font-size: 2.5rem;
+  color: var(--masjid-gold);
+  margin-bottom: 8px;
+  line-height: 1.1;
+}
+
+.login-subtitle {
+  color: rgba(255,255,255,0.55);
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 36px;
+}
+
+.btn-google {
+  background: #fff;
+  color: #374151;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.btn-google:hover {
+  background: #f3f4f6;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.login-privacy {
+  color: rgba(255,255,255,0.3);
+  font-size: 0.75rem;
+  margin-top: 20px;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .denomination-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .info-box {
+    margin-bottom: 12px;
+  }
+
+  .card-header .d-flex {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+@media (max-width: 576px) {
+  .login-card {
+    margin: 16px;
+    padding: 32px 24px;
+  }
+
+  .main-header .navbar-nav .nav-link {
+    padding: 6px 10px;
+  }
+}
