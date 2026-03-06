@@ -17,18 +17,11 @@ export default function Dashboard() {
   const year = getCurrentYear()
 
   useEffect(() => {
-    getDashboardStats().then(({ data, ...rest }) => {
-      setStats(rest.totalCollection !== undefined ? rest : null)
-      // getDashboardStats returns values directly
-      setStats(rest)
-      setLoading(false)
-    }).catch(() => setLoading(false))
-
-    getDashboardStats().then(s => {
-      setStats(s)
-      setLoading(false)
-    })
-  }, [])
+  getDashboardStats().then(s => {
+    setStats(s)
+    setLoading(false)
+  }).catch(() => setLoading(false))
+}, [])
 
   if (loading) return (
     <div className="text-center py-5">

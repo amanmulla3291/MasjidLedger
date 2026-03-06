@@ -10,12 +10,14 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      if (session?.user) {
-        await handleUser(session.user)
-      }
-      setLoading(false)
-    })
+    supabase.auth.getSession()
+      .then(async ({ data: { session } }) => {
+        if (session?.user) {
+          await handleUser(session.user)
+        }
+        setLoading(false)
+      })
+      .catch(() => setLoading(false))
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -23,6 +25,8 @@ export function AuthProvider({ children }) {
         await handleUser(session.user)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
+      } else if (event === 'INITIAL_SESSION') {
+        setLoading(false)
       }
     })
 
@@ -36,12 +40,13 @@ export function AuthProvider({ children }) {
       toast.error('Access denied. This application is private.')
       await signOut()
       setUser(null)
+      setLoading(false)
       return
     }
 
-    // Upsert user in our users table
     await upsertUser(authUser)
     setUser(authUser)
+    setLoading(false)
   }
 
   return (
