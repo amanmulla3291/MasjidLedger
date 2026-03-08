@@ -224,7 +224,7 @@ export async function getDashboardStats() {
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [collections, expenses, ramzanYears] = await Promise.all([
+  const [collections, expenses, ramzanYears, allCollections, allExpenses] = await Promise.all([
     supabase
       .from('collections')
       .select('amount')
@@ -240,10 +240,19 @@ export async function getDashboardStats() {
       .select('id, year')
       .eq('year', year)
       .single(),
+    supabase
+      .from('collections')
+      .select('amount'),
+    supabase
+      .from('expenses')
+      .select('amount'),
   ])
 
   const totalCollection = collections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
   const totalExpenses = expenses.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
+
+  const allTimeCollection = allCollections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
+  const allTimeExpenses = allExpenses.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
 
   let ramzanTotal = 0
   if (ramzanYears.data?.id) {
@@ -280,7 +289,7 @@ export async function getDashboardStats() {
   return {
     totalCollection,
     totalExpenses,
-    balance: totalCollection - totalExpenses,
+    allTimeBalance: allTimeCollection - allTimeExpenses,
     ramzanTotal,
     monthlyTotals,
     categoryTotals,
@@ -301,7 +310,6 @@ export async function uploadFile(bucket, file, path) {
     .from(bucket)
     .getPublicUrl(path)
 
-  // For private buckets, use signed URL
   const { data: signedData } = await supabase.storage
     .from(bucket)
     .createSignedUrl(path, 60 * 60 * 24 * 365) // 1 year
