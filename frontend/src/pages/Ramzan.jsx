@@ -3,7 +3,7 @@ import {
   getRamzanYears, addRamzanYear,
   getRamzanContributions, addRamzanContribution, deleteRamzanContribution,
   getRamzanExpenses, addRamzanExpense, deleteRamzanExpense,
-  uploadFile, getSignedUrl
+  uploadFile, getSignedUrl, supabase
 } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -25,6 +25,11 @@ export default function Ramzan() {
   const [showYearForm, setShowYearForm] = useState(false)
   const [showContribForm, setShowContribForm] = useState(false)
   const [showExpenseForm, setShowExpenseForm] = useState(false)
+
+  // Edit state
+  const [editingField, setEditingField] = useState(null) // 'hafiz_name' | 'expected_salary'
+  const [editValue, setEditValue] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
 
   const [yearForm, setYearForm] = useState({
     year: getCurrentYear(),
@@ -74,6 +79,45 @@ export default function Ramzan() {
   useEffect(() => { loadYears() }, [])
   useEffect(() => { if (selectedYear) loadDetails(selectedYear.id) }, [selectedYear])
 
+  // ── Edit Hafiz / Salary ──────────────────────────────────
+  function startEdit(field) {
+    setEditingField(field)
+    setEditValue(field === 'hafiz_name' ? selectedYear.hafiz_name : String(selectedYear.expected_salary || ''))
+  }
+
+  function cancelEdit() {
+    setEditingField(null)
+    setEditValue('')
+  }
+
+  async function saveEdit() {
+    if (!editValue.trim()) return toast.error('Value cannot be empty')
+    setEditSaving(true)
+    const update = editingField === 'hafiz_name'
+      ? { hafiz_name: editValue.trim() }
+      : { expected_salary: parseFloat(editValue) || 0 }
+
+    const { data, error } = await supabase
+      .from('ramzan_year')
+      .update(update)
+      .eq('id', selectedYear.id)
+      .select()
+      .single()
+
+    if (error) {
+      toast.error('Failed to update: ' + error.message)
+    } else {
+      toast.success('Updated!')
+      const updated = { ...selectedYear, ...update }
+      setSelectedYear(updated)
+      setYears(years.map(y => y.id === updated.id ? updated : y))
+      setEditingField(null)
+      setEditValue('')
+    }
+    setEditSaving(false)
+  }
+
+  // ── Other handlers ───────────────────────────────────────
   async function handleAddYear(e) {
     e.preventDefault()
     if (!yearForm.hafiz_name) return toast.error('Hafiz name required')
@@ -171,6 +215,45 @@ export default function Ramzan() {
   const totalContribs = contributions.reduce((s, c) => s + Number(c.amount), 0)
   const totalRamzanExp = ramzanExpenses.reduce((s, e) => s + Number(e.amount), 0)
   const balance = totalContribs - totalRamzanExp
+
+  // ── Inline edit input component ──────────────────────────
+  function EditableField({ field, label, type = 'text', displayValue }) {
+    if (editingField === field) {
+      return (
+        <div className="d-flex align-items-center" style={{ gap: '6px', marginTop: '4px' }}>
+          <input
+            type={type}
+            className="form-control form-control-sm"
+            value={editValue}
+            onChange={e => setEditValue(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') saveEdit(); if (e.key === 'Escape') cancelEdit() }}
+            autoFocus
+            style={{ maxWidth: '200px', background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.4)' }}
+          />
+          <button
+            className="btn btn-xs btn-success"
+            onClick={saveEdit}
+            disabled={editSaving}
+          >
+            {editSaving ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-check" />}
+          </button>
+          <button className="btn btn-xs btn-secondary" onClick={cancelEdit}>
+            <i className="fas fa-times" />
+          </button>
+        </div>
+      )
+    }
+    return (
+      <span
+        style={{ cursor: 'pointer', borderBottom: '1px dashed rgba(255,255,255,0.4)', paddingBottom: '1px' }}
+        onClick={() => startEdit(field)}
+        title={`Click to edit ${label}`}
+      >
+        {displayValue}
+        <i className="fas fa-pen ml-2" style={{ fontSize: '0.65rem', opacity: 0.6 }} />
+      </span>
+    )
+  }
 
   return (
     <div>
@@ -295,22 +378,36 @@ export default function Ramzan() {
             </div>
           ) : (
             <>
-              {/* Year header */}
+              {/* Year header with inline editing */}
               <div className="card mb-3" style={{ background: 'linear-gradient(135deg, #1a2035, #253050)', color: '#fff', border: 'none' }}>
-                <div className="card-body d-flex align-items-center justify-content-between">
+                <div className="card-body d-flex align-items-start justify-content-between">
                   <div>
                     <h4 style={{ fontFamily: 'Amiri, serif', margin: 0, color: '#c9a227' }}>
                       Ramzan {selectedYear.year}
                     </h4>
-                    <p style={{ margin: 0, opacity: 0.75, fontSize: '0.9rem' }}>
-                      Hafiz {selectedYear.hafiz_name}
-                      {selectedYear.expected_salary > 0 && ` · Expected: ${formatCurrency(selectedYear.expected_salary)}`}
+                    <p style={{ margin: '6px 0 0', opacity: 0.75, fontSize: '0.9rem' }}>
+                      Hafiz{' '}
+                      <EditableField
+                        field="hafiz_name"
+                        label="Hafiz Name"
+                        type="text"
+                        displayValue={selectedYear.hafiz_name}
+                      />
+                    </p>
+                    <p style={{ margin: '6px 0 0', opacity: 0.75, fontSize: '0.85rem' }}>
+                      Expected Salary:{' '}
+                      <EditableField
+                        field="expected_salary"
+                        label="Expected Salary"
+                        type="number"
+                        displayValue={formatCurrency(selectedYear.expected_salary)}
+                      />
                     </p>
                     {selectedYear.notes && (
                       <p style={{ margin: '4px 0 0', opacity: 0.55, fontSize: '0.8rem' }}>{selectedYear.notes}</p>
                     )}
                   </div>
-                  <div className="text-right">
+                  <div>
                     <button className="btn btn-warning btn-sm" onClick={handleExportPDF}>
                       <i className="fas fa-file-pdf mr-1" /> Eid Report PDF
                     </button>
@@ -424,7 +521,7 @@ export default function Ramzan() {
                                   className="form-control form-control-sm"
                                   min="0"
                                   value={contribForm.amount}
-                                  onChange={e => setContribForm(f => ({ ...f, amount: e.target.value }))}
+                                  onChange={e => setContribForm(f => ({ ...f, amount: e.target.value })}
                                   required
                                 />
                               </div>
