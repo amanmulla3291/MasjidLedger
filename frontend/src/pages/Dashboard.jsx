@@ -11,6 +11,22 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement)
 
+function StatCard({ icon, iconBg, label, value, valueColor }) {
+  return (
+    <div className="stat-card">
+      <div className="stat-card-icon" style={{ background: iconBg }}>
+        <i className={`fas ${icon}`} />
+      </div>
+      <div className="stat-card-body">
+        <div className="stat-card-label">{label}</div>
+        <div className="stat-card-value" style={valueColor ? { color: valueColor } : {}}>
+          {value}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -69,57 +85,33 @@ export default function Dashboard() {
         icon="fa-tachometer-alt"
       />
 
-      {/* Info boxes */}
-      <div className="row">
-        <div className="col-6 col-lg-3">
-          <div className="info-box">
-            <span className="info-box-icon" style={{ background: '#1a5c2a', color: '#fff' }}>
-              <i className="fas fa-hand-holding-usd" />
-            </span>
-            <div className="info-box-content">
-              <span className="info-box-text">Collections This Month</span>
-              <span className="info-box-number">{formatCurrency(stats?.totalCollection)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-6 col-lg-3">
-          <div className="info-box">
-            <span className="info-box-icon" style={{ background: '#b71c1c', color: '#fff' }}>
-              <i className="fas fa-file-invoice-dollar" />
-            </span>
-            <div className="info-box-content">
-              <span className="info-box-text">Expenses This Month</span>
-              <span className="info-box-number">{formatCurrency(stats?.totalExpenses)}</span>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-6 col-lg-3">
-          <div className="info-box">
-            <span className="info-box-icon" style={{ background: balance >= 0 ? '#1565c0' : '#e65100', color: '#fff' }}>
-              <i className="fas fa-balance-scale" />
-            </span>
-            <div className="info-box-content">
-              <span className="info-box-text">Total Balance (All Time)</span>
-              <span className="info-box-number" style={{ color: balance >= 0 ? '#15803d' : '#b91c1c' }}>
-                {formatCurrency(balance)}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="col-6 col-lg-3">
-          <div className="info-box">
-            <span className="info-box-icon" style={{ background: '#c9a227', color: '#fff' }}>
-              <i className="fas fa-moon" />
-            </span>
-            <div className="info-box-content">
-              <span className="info-box-text">Ramzan Contributions</span>
-              <span className="info-box-number">{formatCurrency(stats?.ramzanTotal)}</span>
-            </div>
-          </div>
-        </div>
+      {/* Stat cards */}
+      <div className="stat-cards-grid mb-3">
+        <StatCard
+          icon="fa-hand-holding-usd"
+          iconBg="#1a5c2a"
+          label="Collections This Month"
+          value={formatCurrency(stats?.totalCollection)}
+        />
+        <StatCard
+          icon="fa-file-invoice-dollar"
+          iconBg="#b71c1c"
+          label="Expenses This Month"
+          value={formatCurrency(stats?.totalExpenses)}
+        />
+        <StatCard
+          icon="fa-balance-scale"
+          iconBg={balance >= 0 ? '#1565c0' : '#e65100'}
+          label="Total Balance (All Time)"
+          value={formatCurrency(balance)}
+          valueColor={balance >= 0 ? '#15803d' : '#b91c1c'}
+        />
+        <StatCard
+          icon="fa-moon"
+          iconBg="#c9a227"
+          label="Ramzan Contributions"
+          value={formatCurrency(stats?.ramzanTotal)}
+        />
       </div>
 
       {/* Charts */}
@@ -215,7 +207,7 @@ export default function Dashboard() {
               <h5 className="card-title mb-0">Quick Actions</h5>
             </div>
             <div className="card-body">
-              <div className="d-flex flex-wrap gap-2" style={{ gap: '10px' }}>
+              <div className="d-flex flex-wrap" style={{ gap: '8px' }}>
                 <a href="/collections" className="btn btn-success btn-sm">
                   <i className="fas fa-plus mr-1" /> Add Friday Collection
                 </a>
