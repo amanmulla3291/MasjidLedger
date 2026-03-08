@@ -177,12 +177,6 @@ export default function Users() {
                 </div>
               </div>
 
-              <div className="alert alert-warning py-2 mb-3" style={{ fontSize: '0.85rem' }}>
-                <i className="fas fa-exclamation-triangle mr-1" />
-                <strong>Important:</strong> After adding a user here, you must also update the RLS policies
-                in Supabase SQL Editor. See <code>QUICK_REFERENCE.md</code> for the SQL.
-              </div>
-
               <button type="submit" className="btn btn-success" disabled={saving}>
                 {saving
                   ? <><span className="spinner-border spinner-border-sm mr-2" />Saving...</>
