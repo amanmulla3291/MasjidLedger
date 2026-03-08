@@ -28,13 +28,14 @@ export default function Sidebar() {
         { to: '/ramzan', icon: 'fa-moon', label: 'Ramzan Management' },
       ],
     },
-    {
+    // Reports — Admins only
+    ...(isAdmin ? [{
       header: 'Reports',
       items: [
         { to: '/reports', icon: 'fa-chart-bar', label: 'Reports & Export' },
       ],
-    },
-    // Admin section — only shown to admins
+    }] : []),
+    // Admin section — Admins only
     ...(isAdmin ? [{
       header: 'Admin',
       items: [

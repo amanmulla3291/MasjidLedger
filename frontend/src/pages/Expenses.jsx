@@ -20,7 +20,9 @@ const DEFAULT_FORM = {
 }
 
 export default function Expenses() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const isAdmin = role === 'admin'
+
   const [expenses, setExpenses] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -172,16 +174,18 @@ export default function Expenses() {
             <button className="btn btn-sm btn-outline-secondary" onClick={() => generateExpensePDF(selectedYear, filtered)}>
               <i className="fas fa-file-pdf mr-1" /> PDF
             </button>
-            <button className="btn btn-danger btn-sm" onClick={() => setShowForm(!showForm)}>
-              <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} mr-1`} />
-              {showForm ? 'Cancel' : 'Add Expense'}
-            </button>
+            {isAdmin && (
+              <button className="btn btn-danger btn-sm" onClick={() => setShowForm(!showForm)}>
+                <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} mr-1`} />
+                {showForm ? 'Cancel' : 'Add Expense'}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Add Form */}
-      {showForm && (
+      {/* Add Form — Admins only */}
+      {showForm && isAdmin && (
         <div className="card mb-4">
           <div className="card-header">
             <h5 className="card-title mb-0">
@@ -261,7 +265,6 @@ export default function Expenses() {
                 </div>
               </div>
 
-              {/* Photo uploads */}
               <div className="row">
                 <div className="col-md-4">
                   <div className="form-group">
@@ -365,12 +368,14 @@ export default function Expenses() {
                               <i className="fas fa-eye" />
                             </button>
                           )}
-                          <button
-                            className="btn btn-xs btn-outline-danger"
-                            onClick={() => handleDelete(e.id)}
-                          >
-                            <i className="fas fa-trash" />
-                          </button>
+                          {isAdmin && (
+                            <button
+                              className="btn btn-xs btn-outline-danger"
+                              onClick={() => handleDelete(e.id)}
+                            >
+                              <i className="fas fa-trash" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

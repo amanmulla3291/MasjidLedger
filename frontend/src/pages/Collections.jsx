@@ -17,7 +17,9 @@ const DEFAULT_FORM = {
 }
 
 export default function Collections() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const isAdmin = role === 'admin'
+
   const [collections, setCollections] = useState([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -136,16 +138,18 @@ export default function Collections() {
             <button className="btn btn-sm btn-outline-secondary" onClick={exportAllExcel}>
               <i className="fas fa-file-excel mr-1" /> Excel
             </button>
-            <button className="btn btn-success btn-sm" onClick={() => setShowForm(!showForm)}>
-              <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} mr-1`} />
-              {showForm ? 'Cancel' : 'Add Collection'}
-            </button>
+            {isAdmin && (
+              <button className="btn btn-success btn-sm" onClick={() => setShowForm(!showForm)}>
+                <i className={`fas ${showForm ? 'fa-times' : 'fa-plus'} mr-1`} />
+                {showForm ? 'Cancel' : 'Add Collection'}
+              </button>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Add Form */}
-      {showForm && (
+      {/* Add Form — Admins only */}
+      {showForm && isAdmin && (
         <div className="card mb-4">
           <div className="card-header">
             <h5 className="card-title mb-0">
@@ -182,12 +186,10 @@ export default function Collections() {
                 </div>
               </div>
 
-              {/* Denomination counter */}
               <div className="form-group">
                 <DenominationCounter onChange={handleDenomChange} />
               </div>
 
-              {/* Manual/override amount */}
               <div className="form-group">
                 <label>
                   Total Amount (₹) *
@@ -228,9 +230,11 @@ export default function Collections() {
           <div className="card-body text-center py-5 text-muted">
             <i className="fas fa-hand-holding-usd fa-3x mb-3" style={{ opacity: 0.2 }} />
             <p>No collections recorded for {selectedYear}.</p>
-            <button className="btn btn-success btn-sm" onClick={() => setShowForm(true)}>
-              Add First Collection
-            </button>
+            {isAdmin && (
+              <button className="btn btn-success btn-sm" onClick={() => setShowForm(true)}>
+                Add First Collection
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -262,7 +266,7 @@ export default function Collections() {
                         <th>Amount</th>
                         <th>Notes</th>
                         <th>Denominations</th>
-                        <th className="text-right">Actions</th>
+                        {isAdmin && <th className="text-right">Actions</th>}
                       </tr>
                     </thead>
                     <tbody>
@@ -286,21 +290,25 @@ export default function Collections() {
                               </small>
                             ) : <span className="text-muted">—</span>}
                           </td>
-                          <td className="text-right">
-                            <button
-                              className="btn btn-xs btn-outline-danger"
-                              onClick={() => handleDelete(c.id)}
-                            >
-                              <i className="fas fa-trash" />
-                            </button>
-                          </td>
+                          {isAdmin && (
+                            <td className="text-right">
+                              <button
+                                className="btn btn-xs btn-outline-danger"
+                                onClick={() => handleDelete(c.id)}
+                              >
+                                <i className="fas fa-trash" />
+                              </button>
+                            </td>
+                          )}
                         </tr>
                       ))}
                     </tbody>
                     <tfoot>
                       <tr style={{ background: '#f0fdf4' }}>
-                        <td colSpan={3}><strong>Month Total</strong></td>
-                        <td colSpan={2} className="amount-positive"><strong>{formatCurrency(group.total)}</strong></td>
+                        <td colSpan={isAdmin ? 3 : 2}><strong>Month Total</strong></td>
+                        <td colSpan={isAdmin ? 2 : 2} className="amount-positive">
+                          <strong>{formatCurrency(group.total)}</strong>
+                        </td>
                       </tr>
                     </tfoot>
                   </table>
