@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { supabase, isWhitelisted, upsertUser, signOut, getUserRole } from '../lib/supabaseClient'
+import { supabase, signOut } from '../lib/supabaseClient'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
@@ -11,7 +11,6 @@ export function AuthProvider({ children }) {
   const handlingUser = useRef(false)
 
   useEffect(() => {
-    // Hard timeout — stop loading after 4s no matter what
     const timeout = setTimeout(() => setLoading(false), 4000)
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -30,11 +29,7 @@ export function AuthProvider({ children }) {
         setRole(null)
         setLoading(false)
       } else if (event === 'TOKEN_REFRESHED') {
-        if (session?.user) {
-          setUser(session.user)
-          setRole(getUserRole(session.user.email))
-          setLoading(false)
-        }
+        if (session?.user) await handleUser(session.user)
       } else {
         setLoading(false)
       }
@@ -51,8 +46,18 @@ export function AuthProvider({ children }) {
     handlingUser.current = true
 
     try {
-      if (!isWhitelisted(authUser.email)) {
-        toast.error('Access denied. This application is private.')
+      // ── Check database for this user's role ──────────────
+      // This replaces the hardcoded WHITELISTED_USERS array so
+      // any user added via the Users page can log in immediately.
+      const { data: dbUser, error } = await supabase
+        .from('users')
+        .select('role')
+        .eq('email', authUser.email.toLowerCase())
+        .single()
+
+      if (error || !dbUser) {
+        // Not in the users table — access denied
+        toast.error('Access denied. Contact the administrator to get access.')
         await signOut()
         setUser(null)
         setRole(null)
@@ -60,12 +65,18 @@ export function AuthProvider({ children }) {
         return
       }
 
+      // User exists in DB — set them up
       setUser(authUser)
-      setRole(getUserRole(authUser.email))
+      setRole(dbUser.role)
       setLoading(false)
 
-      // Fire upsert in background (non-blocking)
-      upsertUser(authUser).catch(() => {})
+      // Update their name in background in case it changed
+      supabase
+        .from('users')
+        .update({ name: authUser.user_metadata?.full_name || authUser.email })
+        .eq('email', authUser.email.toLowerCase())
+        .then(() => {})
+
     } catch {
       setLoading(false)
     } finally {

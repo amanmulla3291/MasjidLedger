@@ -15,6 +15,24 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 })
 
 // ============================================================
+// SAFE QUERY HELPER
+// Detects silent RLS blocks (empty data for authenticated user)
+// and logs a clear warning in the browser console.
+// ============================================================
+export async function safeQuery(query, tableName = '') {
+  const { data, error } = await query
+  if (error) {
+    console.error('[RLS ERROR] ' + tableName + ':', error.message)
+    return { data: null, error }
+  }
+  if (Array.isArray(data) && data.length === 0) {
+    console.warn('[RLS WARN] ' + tableName + ' returned 0 rows — check RLS policies if unexpected')
+  }
+  return { data, error: null }
+}
+
+
+// ============================================================
 // USER ROLES & ACCESS CONTROL
 // ============================================================
 
