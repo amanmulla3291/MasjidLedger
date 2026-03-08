@@ -29,7 +29,7 @@ export default function Navbar() {
         </li>
         <li className="nav-item d-none d-sm-flex align-items-center">
           <span style={{ fontFamily: 'Amiri, serif', fontSize: '1.05rem', color: '#1a5c2a', fontWeight: '700' }}>
-            🕌 Masjid Ledger
+            🕌 Sunni Jamma Masjid, Tambave
           </span>
         </li>
       </ul>

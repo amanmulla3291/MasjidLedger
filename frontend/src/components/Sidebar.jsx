@@ -35,7 +35,7 @@ export default function Sidebar() {
       {/* Brand */}
       <a href="/dashboard" className="brand-link" style={{ textDecoration: 'none' }}>
         <span style={{ fontSize: '1.8rem', marginRight: '10px' }}>🕌</span>
-        <span className="brand-text">Masjid Ledger</span>
+        <span className="brand-text">Sunni Jamma Masjid, Tambave</span>
       </a>
 
       <div className="sidebar">

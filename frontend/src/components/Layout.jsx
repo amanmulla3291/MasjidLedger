@@ -18,7 +18,7 @@ export default function Layout() {
         </section>
       </div>
       <footer className="main-footer text-center" style={{ fontSize: '0.8rem', color: '#9ca3af', border: 'none' }}>
-        <span style={{ fontFamily: 'Amiri, serif' }}>🕌 Masjid Ledger</span>
+        <span style={{ fontFamily: 'Amiri, serif' }}>🕌 Sunni Jamma Masjid, Tambave</span>
         {' '}— Private Financial Records &copy; {new Date().getFullYear()}
       </footer>
       <aside className="control-sidebar control-sidebar-dark" />

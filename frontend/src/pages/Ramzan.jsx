@@ -319,35 +319,33 @@ export default function Ramzan() {
               </div>
 
               {/* Stats row */}
-              <div className="row mb-3">
-                <div className="col-4">
-                  <div className="info-box" style={{ marginBottom: 0 }}>
-                    <span className="info-box-icon bg-success"><i className="fas fa-users" /></span>
-                    <div className="info-box-content">
-                      <span className="info-box-text">Members</span>
-                      <span className="info-box-number">{contributions.length}</span>
-                    </div>
+              <div className="stat-cards-grid stat-cards-3 mb-3">
+                <div className="stat-card">
+                  <div className="stat-card-icon" style={{ background: '#1a5c2a' }}>
+                    <i className="fas fa-users" />
+                  </div>
+                  <div className="stat-card-body">
+                    <div className="stat-card-label">Members</div>
+                    <div className="stat-card-value">{contributions.length}</div>
                   </div>
                 </div>
-                <div className="col-4">
-                  <div className="info-box" style={{ marginBottom: 0 }}>
-                    <span className="info-box-icon bg-warning"><i className="fas fa-rupee-sign" /></span>
-                    <div className="info-box-content">
-                      <span className="info-box-text">Collected</span>
-                      <span className="info-box-number">{formatCurrency(totalContribs)}</span>
-                    </div>
+                <div className="stat-card">
+                  <div className="stat-card-icon" style={{ background: '#c9a227' }}>
+                    <i className="fas fa-rupee-sign" />
+                  </div>
+                  <div className="stat-card-body">
+                    <div className="stat-card-label">Collected</div>
+                    <div className="stat-card-value">{formatCurrency(totalContribs)}</div>
                   </div>
                 </div>
-                <div className="col-4">
-                  <div className="info-box" style={{ marginBottom: 0 }}>
-                    <span className="info-box-icon" style={{ background: balance >= 0 ? '#1565c0' : '#b71c1c' }}>
-                      <i className="fas fa-balance-scale" style={{ color: '#fff' }} />
-                    </span>
-                    <div className="info-box-content">
-                      <span className="info-box-text">Balance</span>
-                      <span className="info-box-number" style={{ color: balance >= 0 ? '#15803d' : '#b91c1c' }}>
-                        {formatCurrency(balance)}
-                      </span>
+                <div className="stat-card">
+                  <div className="stat-card-icon" style={{ background: balance >= 0 ? '#1565c0' : '#b71c1c' }}>
+                    <i className="fas fa-balance-scale" />
+                  </div>
+                  <div className="stat-card-body">
+                    <div className="stat-card-label">Balance</div>
+                    <div className="stat-card-value" style={{ color: balance >= 0 ? '#15803d' : '#b91c1c' }}>
+                      {formatCurrency(balance)}
                     </div>
                   </div>
                 </div>

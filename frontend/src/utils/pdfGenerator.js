@@ -11,7 +11,7 @@ export function generateRamzanPDF(ramzanYear, contributions) {
   // Header
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
-  doc.text('Masjid Ledger', 105, 18, { align: 'center' })
+  doc.text('Sunni Jamma Masjid, Tambave', 105, 18, { align: 'center' })
 
   doc.setFontSize(14)
   doc.setFont('helvetica', 'normal')
@@ -72,7 +72,7 @@ export function generateRamzanPDF(ramzanYear, contributions) {
     14,
     finalY
   )
-  doc.text('Masjid Ledger — Private Record', 196, finalY, { align: 'right' })
+  doc.text('Sunni Jamma Masjid, Tambave — Private Record', 196, finalY, { align: 'right' })
 
   doc.save(`Ramzan_Contribution_Report_${ramzanYear.year}.pdf`)
 }
@@ -85,7 +85,7 @@ export function generateMonthlyCollectionPDF(year, month, collections, monthName
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
-  doc.text('Masjid Ledger', 105, 18, { align: 'center' })
+  doc.text('Sunni Jamma Masjid, Tambave', 105, 18, { align: 'center' })
 
   doc.setFontSize(13)
   doc.setFont('helvetica', 'normal')
@@ -127,7 +127,7 @@ export function generateLedgerPDF(year, collections, expenses) {
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
-  doc.text('Masjid Ledger', 148, 18, { align: 'center' })
+  doc.text('Sunni Jamma Masjid, Tambave', 148, 18, { align: 'center' })
 
   doc.setFontSize(12)
   doc.setFont('helvetica', 'normal')
@@ -199,7 +199,7 @@ export function generateExpensePDF(year, expenses) {
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(18)
-  doc.text('Masjid Ledger', 105, 18, { align: 'center' })
+  doc.text('Sunni Jamma Masjid, Tambave', 105, 18, { align: 'center' })
 
   doc.setFontSize(13)
   doc.setFont('helvetica', 'normal')

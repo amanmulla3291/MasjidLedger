@@ -18,7 +18,7 @@ function PrivateRoute({ children }) {
         <div className="text-center">
           <div className="spinner-border text-success" style={{ width: '3rem', height: '3rem' }} />
           <p className="mt-3 text-muted" style={{ fontFamily: 'Amiri, serif', fontSize: '1.1rem' }}>
-            Loading Masjid Ledger...
+            Loading Sunni Jamma Masjid, Tambave...
           </p>
         </div>
       </div>

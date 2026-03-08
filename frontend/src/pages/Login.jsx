@@ -23,7 +23,7 @@ export default function Login() {
           <div style={{ fontSize: '3.5rem', lineHeight: 1 }}>🕌</div>
         </div>
 
-        <div className="login-logo">Masjid Ledger</div>
+        <div className="login-logo">Sunni Jamma Masjid, Tambave</div>
         <div className="login-subtitle">Private Financial Records System</div>
 
         {/* Decorative divider */}
