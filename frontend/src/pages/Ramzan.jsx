@@ -521,7 +521,7 @@ export default function Ramzan() {
                                   className="form-control form-control-sm"
                                   min="0"
                                   value={contribForm.amount}
-                                  onChange={e => setContribForm(f => ({ ...f, amount: e.target.value })}
+                                  onChange={e => setContribForm(f => ({ ...f, amount: e.target.value }))}
                                   required
                                 />
                               </div>
