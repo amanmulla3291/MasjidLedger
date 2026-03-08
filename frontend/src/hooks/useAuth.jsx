@@ -9,7 +9,14 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    // Hard timeout — no matter what, stop loading after 5 seconds
+    const timeout = setTimeout(() => {
+      setLoading(false)
+    }, 5000)
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      clearTimeout(timeout)
+
       if (event === 'INITIAL_SESSION') {
         if (session?.user) {
           await handleUser(session.user)
@@ -26,11 +33,31 @@ export function AuthProvider({ children }) {
       } else if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           setUser(session.user)
+          setLoading(false)
         }
+      } else {
+        // Any other event — make sure loading stops
+        setLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
+    // Also directly check session as backup
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (session?.user && !user) {
+        await handleUser(session.user)
+      } else if (!session?.user) {
+        setLoading(false)
+      }
+      clearTimeout(timeout)
+    }).catch(() => {
+      setLoading(false)
+      clearTimeout(timeout)
+    })
+
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
   async function handleUser(authUser) {
