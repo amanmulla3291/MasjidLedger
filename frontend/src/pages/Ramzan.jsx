@@ -59,12 +59,16 @@ export default function Ramzan() {
   }
 
   async function loadDetails(yearId) {
-    const [c, e] = await Promise.all([
-      getRamzanContributions(yearId),
-      getRamzanExpenses(yearId),
-    ])
-    setContributions(c.data || [])
-    setRamzanExpenses(e.data || [])
+    try {
+      const [c, e] = await Promise.all([
+        getRamzanContributions(yearId),
+        getRamzanExpenses(yearId),
+      ])
+      setContributions(c.data || [])
+      setRamzanExpenses(e.data || [])
+    } catch {
+      toast.error('Failed to load Ramzan data. Please refresh.')
+    }
   }
 
   useEffect(() => { loadYears() }, [])

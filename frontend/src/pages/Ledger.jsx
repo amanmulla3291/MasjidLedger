@@ -16,13 +16,20 @@ export default function Ledger() {
 
   async function load() {
     setLoading(true)
-    const [colResult, expResult] = await Promise.all([
-      getCollections(selectedYear),
-      getExpenses(selectedYear),
-    ])
-    if (!colResult.error) setCollections(colResult.data || [])
-    if (!expResult.error) setExpenses(expResult.data || [])
-    setLoading(false)
+    try {
+      const [colResult, expResult] = await Promise.all([
+        getCollections(selectedYear),
+        getExpenses(selectedYear),
+      ])
+      if (!colResult.error) setCollections(colResult.data || [])
+      else toast.error('Failed to load collections')
+      if (!expResult.error) setExpenses(expResult.data || [])
+      else toast.error('Failed to load expenses')
+    } catch {
+      toast.error('Failed to load ledger data. Please refresh.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [selectedYear])
@@ -97,63 +104,68 @@ export default function Ledger() {
 
       {/* Summary cards */}
       <div className="row mb-3">
-        <div className="col-4">
-          <div className="small-box bg-success">
-            <div className="inner">
-              <h4>{formatCurrency(totalIncome)}</h4>
-              <p>Total Income</p>
+        <div className="col-12 col-sm-4 mb-2 mb-sm-0">
+          <div className="ledger-summary-card ledger-summary-income">
+            <div className="ledger-summary-icon"><i className="fas fa-arrow-up" /></div>
+            <div className="ledger-summary-body">
+              <div className="ledger-summary-label">Total Income</div>
+              <div className="ledger-summary-value">{formatCurrency(totalIncome)}</div>
             </div>
-            <div className="icon"><i className="fas fa-arrow-up" /></div>
           </div>
         </div>
-        <div className="col-4">
-          <div className="small-box bg-danger">
-            <div className="inner">
-              <h4>{formatCurrency(totalExpense)}</h4>
-              <p>Total Expenses</p>
+        <div className="col-12 col-sm-4 mb-2 mb-sm-0">
+          <div className="ledger-summary-card ledger-summary-expense">
+            <div className="ledger-summary-icon"><i className="fas fa-arrow-down" /></div>
+            <div className="ledger-summary-body">
+              <div className="ledger-summary-label">Total Expenses</div>
+              <div className="ledger-summary-value">{formatCurrency(totalExpense)}</div>
             </div>
-            <div className="icon"><i className="fas fa-arrow-down" /></div>
           </div>
         </div>
-        <div className="col-4">
-          <div className="small-box" style={{ background: finalBalance >= 0 ? '#1565c0' : '#e65100' }}>
-            <div className="inner" style={{ color: '#fff' }}>
-              <h4 style={{ color: '#fff' }}>{formatCurrency(Math.abs(finalBalance))}</h4>
-              <p>{finalBalance >= 0 ? 'Balance' : 'Deficit'}</p>
+        <div className="col-12 col-sm-4">
+          <div
+            className="ledger-summary-card"
+            style={{ background: finalBalance >= 0 ? '#1565c0' : '#e65100' }}
+          >
+            <div className="ledger-summary-icon"><i className="fas fa-balance-scale" /></div>
+            <div className="ledger-summary-body">
+              <div className="ledger-summary-label" style={{ color: 'rgba(255,255,255,0.8)' }}>
+                {finalBalance >= 0 ? 'Balance' : 'Deficit'}
+              </div>
+              <div className="ledger-summary-value">{formatCurrency(Math.abs(finalBalance))}</div>
             </div>
-            <div className="icon"><i className="fas fa-balance-scale" /></div>
           </div>
         </div>
       </div>
 
       {/* Toolbar */}
       <div className="card mb-3">
-        <div className="card-body py-2 d-flex flex-wrap align-items-center justify-content-between" style={{ gap: '10px' }}>
-          <div className="d-flex align-items-center" style={{ gap: '10px' }}>
+        <div className="card-body py-2 d-flex flex-wrap align-items-center justify-content-between" style={{ gap: '8px' }}>
+          <div className="d-flex align-items-center" style={{ gap: '8px' }}>
             <select
               className="form-control form-control-sm"
-              style={{ width: '100px' }}
+              style={{ width: '90px' }}
               value={selectedYear}
               onChange={e => setSelectedYear(parseInt(e.target.value))}
             >
               {getYearOptions().map(y => <option key={y} value={y}>{y}</option>)}
             </select>
-            <span style={{ fontSize: '0.82rem', color: '#6b7280' }}>
-              {entriesWithBalance.length} transactions
+            <span style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+              {entriesWithBalance.length} entries
             </span>
           </div>
-          <div className="d-flex" style={{ gap: '8px' }}>
+          <div className="d-flex" style={{ gap: '6px' }}>
             <button className="btn btn-sm btn-outline-secondary" onClick={exportCSV}>
-              <i className="fas fa-file-csv mr-1" /> CSV
+              <i className="fas fa-file-csv mr-1" /><span className="d-none d-sm-inline">CSV</span>
             </button>
             <button className="btn btn-sm btn-outline-secondary" onClick={exportExcel}>
-              <i className="fas fa-file-excel mr-1" /> Excel
+              <i className="fas fa-file-excel mr-1" /><span className="d-none d-sm-inline">Excel</span>
             </button>
             <button
               className="btn btn-sm btn-outline-danger"
               onClick={() => generateLedgerPDF(selectedYear, collections, expenses)}
             >
-              <i className="fas fa-file-pdf mr-1" /> PDF
+              <i className="fas fa-file-pdf mr-1" /><span className="d-none d-sm-inline">PDF</span>
             </button>
           </div>
         </div>
@@ -172,17 +184,17 @@ export default function Ledger() {
       ) : (
         <div className="card">
           <div className="card-body p-0">
-            <div className="table-responsive">
-              <table className="table table-hover mb-0">
+            <div className="table-responsive ledger-table-wrap">
+              <table className="table table-hover mb-0 ledger-table">
                 <thead>
                   <tr>
-                    <th>#</th>
-                    <th>Date</th>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th>Income</th>
-                    <th>Expense</th>
-                    <th>Balance</th>
+                    <th className="ledger-col-num">#</th>
+                    <th className="ledger-col-date">Date</th>
+                    <th className="ledger-col-type d-none d-sm-table-cell">Type</th>
+                    <th className="ledger-col-desc">Description</th>
+                    <th className="ledger-col-amount">In</th>
+                    <th className="ledger-col-amount d-none d-md-table-cell">Out</th>
+                    <th className="ledger-col-balance">Balance</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -191,28 +203,34 @@ export default function Ledger() {
                       key={entry.id}
                       className={entry.type === 'income' ? 'ledger-row-income' : 'ledger-row-expense'}
                     >
-                      <td style={{ color: '#9ca3af', fontSize: '0.8rem' }}>{i + 1}</td>
-                      <td>{formatDate(entry.date)}</td>
-                      <td>
+                      <td className="ledger-col-num" style={{ color: '#9ca3af' }}>{i + 1}</td>
+                      <td className="ledger-col-date ledger-date-cell">{formatDate(entry.date)}</td>
+                      <td className="d-none d-sm-table-cell">
                         <span
                           className={`badge ${entry.type === 'income' ? 'badge-success' : 'badge-danger'}`}
-                          style={{ fontSize: '0.72rem' }}
+                          style={{ fontSize: '0.68rem' }}
                         >
                           {entry.typeLabel}
                         </span>
                       </td>
-                      <td>{entry.description}</td>
-                      <td>
+                      <td className="ledger-col-desc ledger-desc-cell">
+                        {/* On mobile, show a colored dot instead of badge */}
+                        <span className={`d-inline d-sm-none ledger-dot ledger-dot-${entry.type}`} />
+                        {entry.description}
+                      </td>
+                      <td className="ledger-col-amount">
                         {entry.type === 'income' ? (
-                          <span className="amount-positive">+{formatCurrency(entry.amount)}</span>
-                        ) : <span className="text-muted">—</span>}
+                          <span className="amount-positive ledger-amount">+{formatCurrency(entry.amount)}</span>
+                        ) : (
+                          <span className="text-muted d-none d-md-inline">—</span>
+                        )}
                       </td>
-                      <td>
+                      <td className="ledger-col-amount d-none d-md-table-cell">
                         {entry.type === 'expense' ? (
-                          <span className="amount-negative">−{formatCurrency(entry.amount)}</span>
+                          <span className="amount-negative ledger-amount">−{formatCurrency(entry.amount)}</span>
                         ) : <span className="text-muted">—</span>}
                       </td>
-                      <td>
+                      <td className="ledger-col-balance">
                         <span
                           className={entry.balance >= 0 ? 'amount-balance' : 'amount-negative'}
                           style={{ fontWeight: '700' }}
@@ -225,15 +243,17 @@ export default function Ledger() {
                 </tbody>
                 <tfoot>
                   <tr style={{ background: '#f0f2f5', fontWeight: '700' }}>
-                    <td colSpan={4} className="text-right">
+                    <td colSpan={3} className="text-right d-none d-sm-table-cell">
                       <strong>TOTALS</strong>
                     </td>
-                    <td className="amount-positive"><strong>{formatCurrency(totalIncome)}</strong></td>
-                    <td className="amount-negative"><strong>{formatCurrency(totalExpense)}</strong></td>
+                    <td colSpan={2} className="text-right d-table-cell d-sm-none">
+                      <strong>TOTALS</strong>
+                    </td>
+                    <td className="amount-positive ledger-amount"><strong>{formatCurrency(totalIncome)}</strong></td>
+                    <td className="amount-negative ledger-amount d-none d-md-table-cell"><strong>{formatCurrency(totalExpense)}</strong></td>
                     <td>
                       <strong
                         className={finalBalance >= 0 ? 'amount-balance' : 'amount-negative'}
-                        style={{ fontSize: '1rem' }}
                       >
                         {formatCurrency(finalBalance)}
                       </strong>

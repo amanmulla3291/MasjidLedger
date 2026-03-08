@@ -104,13 +104,13 @@ body {
 }
 
 .info-box-number {
-  font-size: 1.35rem !important;
+  font-size: 1.2rem !important;
   font-weight: 700 !important;
   font-family: var(--font-body) !important;
 }
 
 .info-box-text {
-  font-size: 0.78rem !important;
+  font-size: 0.72rem !important;
   font-weight: 500 !important;
   text-transform: uppercase !important;
   letter-spacing: 0.05em !important;
@@ -173,15 +173,15 @@ body {
    ============================================================ */
 .denomination-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
 }
 
 .denomination-item {
   background: #f9fafb;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 12px;
+  padding: 10px;
   text-align: center;
   transition: all 0.15s ease;
 }
@@ -192,7 +192,7 @@ body {
 }
 
 .denomination-label {
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   color: #6b7280;
   font-weight: 500;
   text-transform: uppercase;
@@ -201,14 +201,14 @@ body {
 }
 
 .denomination-note {
-  font-size: 1.1rem;
+  font-size: 1rem;
   font-weight: 700;
   color: var(--masjid-green);
   margin-bottom: 8px;
 }
 
 .denomination-subtotal {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: #374151;
   font-weight: 500;
   margin-top: 4px;
@@ -218,22 +218,22 @@ body {
   background: linear-gradient(135deg, var(--masjid-green), var(--masjid-green-light));
   color: #fff;
   border-radius: 8px;
-  padding: 14px 20px;
+  padding: 12px 16px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 16px;
+  margin-top: 14px;
 }
 
 .denomination-total-banner .total-label {
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   opacity: 0.85;
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
 
 .denomination-total-banner .total-amount {
-  font-size: 1.6rem;
+  font-size: 1.4rem;
   font-weight: 700;
   font-family: var(--font-display);
 }
@@ -242,20 +242,20 @@ body {
    TABLE
    ============================================================ */
 .table th {
-  font-size: 0.75rem !important;
+  font-size: 0.72rem !important;
   text-transform: uppercase !important;
   letter-spacing: 0.06em !important;
   color: #6b7280 !important;
   font-weight: 600 !important;
   border-top: none !important;
-  padding: 10px 12px !important;
+  padding: 8px 10px !important;
   background: #f9fafb !important;
 }
 
 .table td {
   vertical-align: middle !important;
-  padding: 10px 12px !important;
-  font-size: 0.9rem !important;
+  padding: 8px 10px !important;
+  font-size: 0.85rem !important;
 }
 
 .amount-positive { color: #15803d; font-weight: 600; }
@@ -268,7 +268,7 @@ body {
 .form-control, .form-select {
   border-radius: 6px !important;
   border-color: #d1d5db !important;
-  font-size: 0.9rem !important;
+  font-size: 0.875rem !important;
 }
 
 .form-control:focus, .form-select:focus {
@@ -277,7 +277,7 @@ body {
 }
 
 label {
-  font-size: 0.8rem !important;
+  font-size: 0.78rem !important;
   font-weight: 600 !important;
   color: #374151 !important;
   text-transform: uppercase !important;
@@ -291,7 +291,7 @@ label {
 .upload-zone {
   border: 2px dashed #d1d5db;
   border-radius: 8px;
-  padding: 24px;
+  padding: 20px;
   text-align: center;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -309,10 +309,123 @@ label {
 }
 
 /* ============================================================
+   LEDGER SUMMARY CARDS
+   ============================================================ */
+.ledger-summary-card {
+  background: #1a5c2a;
+  border-radius: 10px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+  height: 100%;
+  min-height: 72px;
+}
+
+.ledger-summary-income { background: #1a5c2a; }
+.ledger-summary-expense { background: #b71c1c; }
+
+.ledger-summary-icon {
+  font-size: 1.3rem;
+  opacity: 0.85;
+  flex-shrink: 0;
+  width: 36px;
+  text-align: center;
+}
+
+.ledger-summary-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.ledger-summary-label {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  opacity: 0.8;
+  margin-bottom: 2px;
+}
+
+.ledger-summary-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ============================================================
    LEDGER TABLE
    ============================================================ */
 .ledger-row-income td { background: #f0fdf4 !important; }
 .ledger-row-expense td { background: #fff5f5 !important; }
+
+.ledger-table-wrap {
+  -webkit-overflow-scrolling: touch;
+}
+
+.ledger-table .ledger-col-num {
+  width: 30px;
+  min-width: 30px;
+  font-size: 0.75rem !important;
+  color: #9ca3af;
+  padding: 8px 6px !important;
+}
+
+.ledger-table .ledger-col-date {
+  white-space: nowrap;
+  min-width: 80px;
+}
+
+.ledger-table .ledger-col-type {
+  min-width: 70px;
+}
+
+.ledger-table .ledger-col-desc {
+  min-width: 120px;
+  max-width: 200px;
+}
+
+.ledger-table .ledger-col-amount {
+  min-width: 80px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.ledger-table .ledger-col-balance {
+  min-width: 85px;
+  white-space: nowrap;
+  text-align: right;
+}
+
+/* Colored dot for mobile type indicator */
+.ledger-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 5px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.ledger-dot-income { background: #15803d; }
+.ledger-dot-expense { background: #b91c1c; }
+
+/* Description truncation on mobile */
+.ledger-desc-cell {
+  font-size: 0.8rem !important;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Amount sizing */
+.ledger-amount {
+  font-size: 0.82rem;
+}
 
 /* ============================================================
    MONTH GROUP HEADER
@@ -352,7 +465,7 @@ label {
   backdrop-filter: blur(20px);
   border: 1px solid rgba(201, 162, 39, 0.2);
   border-radius: 16px;
-  padding: 48px 40px;
+  padding: 40px 32px;
   max-width: 420px;
   width: 100%;
   text-align: center;
@@ -360,7 +473,7 @@ label {
 
 .login-logo {
   font-family: var(--font-display);
-  font-size: 2.5rem;
+  font-size: 2.2rem;
   color: var(--masjid-gold);
   margin-bottom: 8px;
   line-height: 1.1;
@@ -368,10 +481,10 @@ label {
 
 .login-subtitle {
   color: rgba(255,255,255,0.55);
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  margin-bottom: 36px;
+  margin-bottom: 32px;
 }
 
 .btn-google {
@@ -400,40 +513,108 @@ label {
 
 .login-privacy {
   color: rgba(255,255,255,0.3);
-  font-size: 0.75rem;
-  margin-top: 20px;
+  font-size: 0.72rem;
+  margin-top: 16px;
 }
 
 /* ============================================================
-   RESPONSIVE
+   RESPONSIVE — TABLET (≤768px)
    ============================================================ */
 @media (max-width: 768px) {
   .denomination-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
   }
 
   .info-box {
-    margin-bottom: 12px;
+    margin-bottom: 10px;
+  }
+
+  .info-box-icon {
+    width: 56px !important;
+    font-size: 1.3rem !important;
+  }
+
+  .info-box-number {
+    font-size: 1rem !important;
   }
 
   .card-header .d-flex {
     flex-wrap: wrap;
-    gap: 8px;
+    gap: 6px;
+  }
+
+  .ledger-summary-value {
+    font-size: 0.95rem;
   }
 }
 
+/* ============================================================
+   RESPONSIVE — MOBILE (≤576px)
+   ============================================================ */
 @media (max-width: 576px) {
   .login-card {
     margin: 16px;
-    padding: 32px 24px;
+    padding: 28px 20px;
+  }
+
+  .login-logo {
+    font-size: 1.8rem;
   }
 
   .main-header .navbar-nav .nav-link {
     padding: 6px 10px;
   }
+
+  .denomination-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .denomination-total-banner .total-amount {
+    font-size: 1.2rem;
+  }
+
+  /* Tighter table cells on small phones */
+  .table th {
+    font-size: 0.65rem !important;
+    padding: 6px 8px !important;
+  }
+
+  .table td {
+    font-size: 0.78rem !important;
+    padding: 6px 8px !important;
+  }
+
+  /* Ledger summary on small phones — stack them */
+  .ledger-summary-card {
+    min-height: 60px;
+    padding: 10px 14px;
+    gap: 10px;
+  }
+
+  .ledger-summary-icon {
+    font-size: 1.1rem;
+    width: 28px;
+  }
+
+  .ledger-summary-value {
+    font-size: 0.9rem;
+  }
+
+  .ledger-summary-label {
+    font-size: 0.62rem;
+  }
+
+  /* Compact page headers on mobile */
+  .content-header {
+    padding: 8px 12px !important;
+  }
 }
 
-/* Force mobile layout */
+/* ============================================================
+   RESPONSIVE — SIDEBAR/LAYOUT (≤991px)
+   ============================================================ */
 @media (max-width: 991px) {
   .main-sidebar {
     transform: translateX(-250px);
@@ -453,9 +634,21 @@ label {
   }
 }
 
-/* Prevent iOS zoom on input focus */
-input, select, textarea {
-  font-size: 16px !important;
+/* ============================================================
+   iOS — Prevent input zoom without breaking layout
+   Use font-size ≥16px only on actual inputs (not overriding UI)
+   ============================================================ */
+@media (max-width: 768px) {
+  input[type="text"],
+  input[type="number"],
+  input[type="date"],
+  input[type="email"],
+  input[type="password"],
+  input[type="search"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
 }
 
 /* Fix mobile table overflow */

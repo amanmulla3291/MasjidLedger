@@ -34,9 +34,14 @@ export default function Expenses() {
 
   async function load() {
     setLoading(true)
-    const { data, error } = await getExpenses(selectedYear)
-    if (!error) setExpenses(data || [])
-    setLoading(false)
+    try {
+      const { data, error } = await getExpenses(selectedYear)
+      if (!error) setExpenses(data || [])
+    } catch {
+      toast.error('Failed to load expenses. Please refresh.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   useEffect(() => { load() }, [selectedYear])
