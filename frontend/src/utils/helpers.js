@@ -16,6 +16,26 @@ export const EXPENSE_CATEGORIES = [
   'Miscellaneous',
 ]
 
+export const INCOME_CATEGORIES = [
+  'Sadaqah',
+  'Zakat',
+  'Donation',
+  'Inheritance',
+  'Property Sale',
+  'Bank Interest',
+  'Religious Event',
+  'Miscellaneous',
+]
+
+export const PAYMENT_MODES = [
+  'Cash',
+  'Bank Transfer',
+  'UPI',
+  'Cheque',
+  'Online Payment',
+  'Card',
+]
+
 export function formatCurrency(amount) {
   return new Intl.NumberFormat('en-IN', {
     style: 'currency',

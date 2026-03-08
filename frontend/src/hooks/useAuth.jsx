@@ -1,11 +1,12 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { supabase, isWhitelisted, upsertUser, signOut } from '../lib/supabaseClient'
+import { supabase, isWhitelisted, upsertUser, signOut, getUserRole } from '../lib/supabaseClient'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
+  const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const handlingUser = useRef(false)
 
@@ -26,10 +27,12 @@ export function AuthProvider({ children }) {
         if (session?.user) await handleUser(session.user)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
+        setRole(null)
         setLoading(false)
       } else if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
           setUser(session.user)
+          setRole(getUserRole(session.user.email))
           setLoading(false)
         }
       } else {
@@ -44,7 +47,6 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function handleUser(authUser) {
-    // Prevent duplicate concurrent calls
     if (handlingUser.current) return
     handlingUser.current = true
 
@@ -53,12 +55,13 @@ export function AuthProvider({ children }) {
         toast.error('Access denied. This application is private.')
         await signOut()
         setUser(null)
+        setRole(null)
         setLoading(false)
         return
       }
 
-      // Set user and stop loading immediately — don't await the DB upsert
       setUser(authUser)
+      setRole(getUserRole(authUser.email))
       setLoading(false)
 
       // Fire upsert in background (non-blocking)
@@ -71,7 +74,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading }}>
+    <AuthContext.Provider value={{ user, role, loading }}>
       {children}
     </AuthContext.Provider>
   )

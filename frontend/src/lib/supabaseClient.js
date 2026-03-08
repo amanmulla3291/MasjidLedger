@@ -14,20 +14,64 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   },
 })
 
-// Whitelisted emails
-export const WHITELISTED_EMAILS = [
-  'amanmulla.aws@gmail.com',
-  'altabmulla36@gmail.com',
-  'pjilani4566@gmail.com',
+// ============================================================
+// USER ROLES & ACCESS CONTROL
+// ============================================================
+
+export const WHITELISTED_USERS = [
+  { email: 'amanmulla.aws@gmail.com', role: 'admin' },
+  { email: 'altabmulla36@gmail.com', role: 'admin' },
+  { email: 'pjilani4566@gmail.com', role: 'viewer' },
 ]
 
+// Keep legacy export for any existing imports
+export const WHITELISTED_EMAILS = WHITELISTED_USERS.map(u => u.email)
+
 export function isWhitelisted(email) {
-  return WHITELISTED_EMAILS.includes(email?.toLowerCase())
+  return WHITELISTED_USERS.some(u => u.email.toLowerCase() === email?.toLowerCase())
 }
+
+export function getUserRole(email) {
+  const user = WHITELISTED_USERS.find(u => u.email.toLowerCase() === email?.toLowerCase())
+  return user?.role || null
+}
+
+export function isAdmin(email) {
+  return getUserRole(email) === 'admin'
+}
+
+export function isViewer(email) {
+  return getUserRole(email) === 'viewer'
+}
+
+// ============================================================
+// INCOME CONSTANTS
+// ============================================================
+
+export const INCOME_CATEGORIES = [
+  'Sadaqah',
+  'Zakat',
+  'Donation',
+  'Inheritance',
+  'Property Sale',
+  'Bank Interest',
+  'Religious Event',
+  'Miscellaneous',
+]
+
+export const PAYMENT_MODES = [
+  'Cash',
+  'Bank Transfer',
+  'UPI',
+  'Cheque',
+  'Online Payment',
+  'Card',
+]
 
 // ============================================================
 // AUTH HELPERS
 // ============================================================
+
 export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -51,14 +95,20 @@ export async function getSession() {
 // ============================================================
 // USER HELPERS
 // ============================================================
-export async function upsertUser(user) {
+
+export async function upsertUser(authUser) {
+  const role = getUserRole(authUser.email) || 'viewer'
   const { data, error } = await supabase
     .from('users')
-    .upsert({
-      id: user.id,
-      email: user.email,
-      name: user.user_metadata?.full_name || user.email,
-    }, { onConflict: 'email' })
+    .upsert(
+      {
+        id: authUser.id,
+        email: authUser.email?.toLowerCase(),
+        name: authUser.user_metadata?.full_name || authUser.email,
+        role: role,
+      },
+      { onConflict: 'email' }
+    )
     .select()
     .single()
   return { data, error }
@@ -67,6 +117,7 @@ export async function upsertUser(user) {
 // ============================================================
 // COLLECTIONS
 // ============================================================
+
 export async function getCollections(year) {
   let query = supabase
     .from('collections')
@@ -120,6 +171,7 @@ export async function deleteCollection(id) {
 // ============================================================
 // EXPENSES
 // ============================================================
+
 export async function getExpenses(year) {
   let query = supabase
     .from('expenses')
@@ -151,8 +203,130 @@ export async function deleteExpense(id) {
 }
 
 // ============================================================
+// INCOME MANAGEMENT
+// ============================================================
+
+export async function getIncome(year = null) {
+  let query = supabase
+    .from('income')
+    .select('*')
+    .order('date', { ascending: false })
+
+  if (year) {
+    const start = `${year}-01-01`
+    const end = `${year}-12-31`
+    query = query.gte('date', start).lte('date', end)
+  }
+
+  const { data, error } = await query
+  return { data, error }
+}
+
+export async function getIncomeByCategory(category, year = null) {
+  let query = supabase
+    .from('income')
+    .select('*')
+    .eq('category', category)
+    .order('date', { ascending: false })
+
+  if (year) {
+    const start = `${year}-01-01`
+    const end = `${year}-12-31`
+    query = query.gte('date', start).lte('date', end)
+  }
+
+  const { data, error } = await query
+  return { data, error }
+}
+
+export async function addIncome(income) {
+  const { data, error } = await supabase
+    .from('income')
+    .insert(income)
+    .select()
+    .single()
+  return { data, error }
+}
+
+export async function updateIncome(id, updates) {
+  const { data, error } = await supabase
+    .from('income')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+  return { data, error }
+}
+
+export async function deleteIncome(id) {
+  const { error } = await supabase.from('income').delete().eq('id', id)
+  return { error }
+}
+
+export async function getIncomeSummary(year) {
+  const { data, error } = await supabase
+    .from('income')
+    .select('category, amount')
+    .gte('date', `${year}-01-01`)
+    .lte('date', `${year}-12-31`)
+
+  if (error) return { data: {}, error }
+
+  const summary = {}
+  data?.forEach(item => {
+    summary[item.category] = (summary[item.category] || 0) + Number(item.amount)
+  })
+
+  return { data: summary, error: null }
+}
+
+// ============================================================
+// JAMAT MEMBERS
+// ============================================================
+
+export async function getJamatMembers(activeOnly = true) {
+  let query = supabase
+    .from('jamat_members')
+    .select('*')
+    .order('name', { ascending: true })
+
+  if (activeOnly) query = query.eq('is_active', true)
+
+  const { data, error } = await query
+  return { data, error }
+}
+
+export async function addJamatMember(member) {
+  const { data, error } = await supabase
+    .from('jamat_members')
+    .insert(member)
+    .select()
+    .single()
+  return { data, error }
+}
+
+export async function updateJamatMember(id, updates) {
+  const { data, error } = await supabase
+    .from('jamat_members')
+    .update(updates)
+    .eq('id', id)
+    .select()
+    .single()
+  return { data, error }
+}
+
+export async function deleteJamatMember(id) {
+  const { error } = await supabase
+    .from('jamat_members')
+    .delete()
+    .eq('id', id)
+  return { error }
+}
+
+// ============================================================
 // RAMZAN
 // ============================================================
+
 export async function getRamzanYears() {
   const { data, error } = await supabase
     .from('ramzan_year')
@@ -173,7 +347,7 @@ export async function addRamzanYear(entry) {
 export async function getRamzanContributions(ramzanYearId) {
   const { data, error } = await supabase
     .from('ramzan_contributions')
-    .select('*')
+    .select('*, jamat_members(name)')
     .eq('ramzan_year_id', ramzanYearId)
     .order('payment_date', { ascending: true })
   return { data, error }
@@ -219,12 +393,13 @@ export async function deleteRamzanExpense(id) {
 // ============================================================
 // DASHBOARD STATS
 // ============================================================
+
 export async function getDashboardStats() {
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
 
-  const [collections, expenses, ramzanYears, allCollections, allExpenses] = await Promise.all([
+  const [collections, expenses, ramzanYears, allCollections, allExpenses, allIncome] = await Promise.all([
     supabase
       .from('collections')
       .select('amount')
@@ -233,8 +408,8 @@ export async function getDashboardStats() {
     supabase
       .from('expenses')
       .select('amount')
-      .gte('date', `${year}-${String(month).padStart(2,'0')}-01`)
-      .lte('date', `${year}-${String(month).padStart(2,'0')}-31`),
+      .gte('date', `${year}-${String(month).padStart(2, '0')}-01`)
+      .lte('date', `${year}-${String(month).padStart(2, '0')}-31`),
     supabase
       .from('ramzan_year')
       .select('id, year')
@@ -246,6 +421,9 @@ export async function getDashboardStats() {
     supabase
       .from('expenses')
       .select('amount'),
+    supabase
+      .from('income')
+      .select('amount'),
   ])
 
   const totalCollection = collections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
@@ -253,6 +431,7 @@ export async function getDashboardStats() {
 
   const allTimeCollection = allCollections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
   const allTimeExpenses = allExpenses.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
+  const allTimeIncome = allIncome.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
 
   let ramzanTotal = 0
   if (ramzanYears.data?.id) {
@@ -289,7 +468,7 @@ export async function getDashboardStats() {
   return {
     totalCollection,
     totalExpenses,
-    allTimeBalance: allTimeCollection - allTimeExpenses,
+    allTimeBalance: allTimeCollection + allTimeIncome - allTimeExpenses,
     ramzanTotal,
     monthlyTotals,
     categoryTotals,
@@ -299,6 +478,7 @@ export async function getDashboardStats() {
 // ============================================================
 // FILE UPLOAD HELPERS
 // ============================================================
+
 export async function uploadFile(bucket, file, path) {
   const { data, error } = await supabase.storage
     .from(bucket)

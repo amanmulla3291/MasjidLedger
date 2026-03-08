@@ -5,9 +5,12 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Collections from './pages/Collections'
 import Expenses from './pages/Expenses'
+import Income from './pages/Income'
 import Ledger from './pages/Ledger'
 import Ramzan from './pages/Ramzan'
+import JamatMembers from './pages/JamatMembers'
 import Reports from './pages/Reports'
+import Users from './pages/Users'
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth()
@@ -45,11 +48,14 @@ function AppRoutes() {
       >
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="income" element={<Income />} />
         <Route path="collections" element={<Collections />} />
         <Route path="expenses" element={<Expenses />} />
         <Route path="ledger" element={<Ledger />} />
         <Route path="ramzan" element={<Ramzan />} />
+        <Route path="jamat-members" element={<JamatMembers />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="users" element={<Users />} />
       </Route>
       <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>

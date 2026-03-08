@@ -1,35 +1,48 @@
-import { NavLink, useLocation } from 'react-router-dom'
-
-const navItems = [
-  {
-    header: 'Main',
-    items: [
-      { to: '/dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard' },
-    ],
-  },
-  {
-    header: 'Finance',
-    items: [
-      { to: '/collections', icon: 'fa-hand-holding-usd', label: 'Friday Collections' },
-      { to: '/expenses', icon: 'fa-file-invoice-dollar', label: 'Expenses' },
-      { to: '/ledger', icon: 'fa-book', label: 'Ledger' },
-    ],
-  },
-  {
-    header: 'Ramzan',
-    items: [
-      { to: '/ramzan', icon: 'fa-moon', label: 'Ramzan Management' },
-    ],
-  },
-  {
-    header: 'Reports',
-    items: [
-      { to: '/reports', icon: 'fa-chart-bar', label: 'Reports & Export' },
-    ],
-  },
-]
+import { NavLink } from 'react-router-dom'
+import { useAuth } from '../hooks/useAuth'
 
 export default function Sidebar() {
+  const { role } = useAuth()
+  const isAdmin = role === 'admin'
+
+  const navGroups = [
+    {
+      header: 'Main',
+      items: [
+        { to: '/dashboard', icon: 'fa-tachometer-alt', label: 'Dashboard' },
+      ],
+    },
+    {
+      header: 'Finance',
+      items: [
+        { to: '/income', icon: 'fa-money-bill-wave', label: 'Income' },
+        { to: '/collections', icon: 'fa-hand-holding-usd', label: 'Friday Collections' },
+        { to: '/expenses', icon: 'fa-file-invoice-dollar', label: 'Expenses' },
+        { to: '/ledger', icon: 'fa-book', label: 'Ledger' },
+      ],
+    },
+    {
+      header: 'Ramzan',
+      items: [
+        { to: '/jamat-members', icon: 'fa-users', label: 'Jamat Members' },
+        { to: '/ramzan', icon: 'fa-moon', label: 'Ramzan Management' },
+      ],
+    },
+    {
+      header: 'Reports',
+      items: [
+        { to: '/reports', icon: 'fa-chart-bar', label: 'Reports & Export' },
+      ],
+    },
+    // Admin section — only shown to admins
+    ...(isAdmin ? [{
+      header: 'Admin',
+      items: [
+        { to: '/users', icon: 'fa-users-cog', label: 'User Management' },
+      ],
+    }] : []),
+  ]
+
   return (
     <aside className="main-sidebar sidebar-dark-success elevation-4">
       {/* Brand */}
@@ -41,7 +54,7 @@ export default function Sidebar() {
       <div className="sidebar">
         <nav className="mt-2">
           <ul className="nav nav-pills nav-sidebar flex-column" data-widget="treeview" role="menu">
-            {navItems.map((group) => (
+            {navGroups.map((group) => (
               <li key={group.header}>
                 <li className="nav-header">{group.header}</li>
                 {group.items.map((item) => (

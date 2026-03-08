@@ -3,7 +3,8 @@ import {
   getRamzanYears, addRamzanYear,
   getRamzanContributions, addRamzanContribution, deleteRamzanContribution,
   getRamzanExpenses, addRamzanExpense, deleteRamzanExpense,
-  uploadFile, getSignedUrl, supabase
+  getJamatMembers,
+  uploadFile, supabase
 } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import {
@@ -15,11 +16,14 @@ import PageHeader from '../components/PageHeader'
 import toast from 'react-hot-toast'
 
 export default function Ramzan() {
-  const { user } = useAuth()
+  const { user, role } = useAuth()
+  const isAdmin = role === 'admin'
+
   const [years, setYears] = useState([])
   const [selectedYear, setSelectedYear] = useState(null)
   const [contributions, setContributions] = useState([])
   const [ramzanExpenses, setRamzanExpenses] = useState([])
+  const [jamatMembers, setJamatMembers] = useState([])
   const [activeTab, setActiveTab] = useState('contributions')
   const [loadingYears, setLoadingYears] = useState(true)
   const [showYearForm, setShowYearForm] = useState(false)
@@ -39,9 +43,10 @@ export default function Ramzan() {
   })
 
   const [contribForm, setContribForm] = useState({
-    member_name: '',
+    jamat_member_id: '',
     amount: '1000',
     payment_date: new Date().toISOString().split('T')[0],
+    payment_mode: 'Cash',
     notes: '',
   })
 
@@ -52,6 +57,13 @@ export default function Ramzan() {
   })
   const [expenseBillFile, setExpenseBillFile] = useState(null)
   const [saving, setSaving] = useState(false)
+
+  // Load active Jamat members for dropdown
+  useEffect(() => {
+    getJamatMembers(true).then(({ data }) => {
+      setJamatMembers(data || [])
+    })
+  }, [])
 
   async function loadYears() {
     setLoadingYears(true)
@@ -117,7 +129,7 @@ export default function Ramzan() {
     setEditSaving(false)
   }
 
-  // ── Other handlers ───────────────────────────────────────
+  // ── Year form ────────────────────────────────────────────
   async function handleAddYear(e) {
     e.preventDefault()
     if (!yearForm.hafiz_name) return toast.error('Hafiz name required')
@@ -138,20 +150,35 @@ export default function Ramzan() {
     setSaving(false)
   }
 
+  // ── Contribution form ────────────────────────────────────
   async function handleAddContrib(e) {
     e.preventDefault()
-    if (!contribForm.member_name) return toast.error('Member name required')
+    if (!contribForm.jamat_member_id) return toast.error('Please select a member')
     if (!contribForm.amount || parseFloat(contribForm.amount) <= 0) return toast.error('Enter valid amount')
+
     setSaving(true)
-    const { error } = await addRamzanContribution({
-      ...contribForm,
-      amount: parseFloat(contribForm.amount),
-      ramzan_year_id: selectedYear.id,
-    })
-    if (error) toast.error('Failed: ' + error.message)
-    else {
+    const { error } = await supabase
+      .from('ramzan_contributions')
+      .insert({
+        ramzan_year_id: selectedYear.id,
+        jamat_member_id: contribForm.jamat_member_id,
+        amount: parseFloat(contribForm.amount),
+        payment_date: contribForm.payment_date,
+        payment_mode: contribForm.payment_mode,
+        notes: contribForm.notes,
+      })
+
+    if (error) {
+      toast.error('Failed: ' + error.message)
+    } else {
       toast.success('Contribution added!')
-      setContribForm({ member_name: '', amount: '1000', payment_date: new Date().toISOString().split('T')[0], notes: '' })
+      setContribForm({
+        jamat_member_id: '',
+        amount: '1000',
+        payment_date: new Date().toISOString().split('T')[0],
+        payment_mode: 'Cash',
+        notes: '',
+      })
       setShowContribForm(false)
       loadDetails(selectedYear.id)
     }
@@ -165,6 +192,7 @@ export default function Ramzan() {
     else { toast.success('Deleted'); loadDetails(selectedYear.id) }
   }
 
+  // ── Expense form ─────────────────────────────────────────
   async function handleAddExpense(e) {
     e.preventDefault()
     if (!expenseForm.title) return toast.error('Title required')
@@ -212,12 +240,26 @@ export default function Ramzan() {
     toast.success('PDF generated!')
   }
 
+  // Helper: get member name from jamatMembers list or from joined data
+  function getMemberName(c) {
+    // If joined via supabase select with jamat_members(name)
+    if (c.jamat_members?.name) return c.jamat_members.name
+    // Fallback: look up from loaded list
+    const found = jamatMembers.find(m => m.id === c.jamat_member_id)
+    if (found) return found.name
+    // Legacy fallback for old records using member_name text field
+    return c.member_name || '—'
+  }
+
   const totalContribs = contributions.reduce((s, c) => s + Number(c.amount), 0)
   const totalRamzanExp = ramzanExpenses.reduce((s, e) => s + Number(e.amount), 0)
   const balance = totalContribs - totalRamzanExp
 
   // ── Inline edit input component ──────────────────────────
   function EditableField({ field, label, type = 'text', displayValue }) {
+    // Only admins can inline-edit
+    if (!isAdmin) return <span>{displayValue}</span>
+
     if (editingField === field) {
       return (
         <div className="d-flex align-items-center" style={{ gap: '6px', marginTop: '4px' }}>
@@ -230,11 +272,7 @@ export default function Ramzan() {
             autoFocus
             style={{ maxWidth: '200px', background: 'rgba(255,255,255,0.15)', color: '#fff', border: '1px solid rgba(255,255,255,0.4)' }}
           />
-          <button
-            className="btn btn-xs btn-success"
-            onClick={saveEdit}
-            disabled={editSaving}
-          >
+          <button className="btn btn-xs btn-success" onClick={saveEdit} disabled={editSaving}>
             {editSaving ? <i className="fas fa-spinner fa-spin" /> : <i className="fas fa-check" />}
           </button>
           <button className="btn btn-xs btn-secondary" onClick={cancelEdit}>
@@ -255,6 +293,7 @@ export default function Ramzan() {
     )
   }
 
+  // ── Render ───────────────────────────────────────────────
   return (
     <div>
       <PageHeader
@@ -269,15 +308,17 @@ export default function Ramzan() {
           <div className="card">
             <div className="card-header d-flex align-items-center justify-content-between">
               <h6 className="mb-0" style={{ fontFamily: 'Amiri, serif' }}>Ramzan Years</h6>
-              <button
-                className="btn btn-xs btn-success"
-                onClick={() => setShowYearForm(!showYearForm)}
-              >
-                <i className="fas fa-plus" />
-              </button>
+              {isAdmin && (
+                <button
+                  className="btn btn-xs btn-success"
+                  onClick={() => setShowYearForm(!showYearForm)}
+                >
+                  <i className="fas fa-plus" />
+                </button>
+              )}
             </div>
 
-            {showYearForm && (
+            {showYearForm && isAdmin && (
               <div className="card-body" style={{ borderBottom: '1px solid #e5e7eb' }}>
                 <form onSubmit={handleAddYear}>
                   <div className="form-group mb-2">
@@ -334,10 +375,13 @@ export default function Ramzan() {
 
             <div className="card-body p-0">
               {loadingYears ? (
-                <div className="text-center py-3"><div className="spinner-border spinner-border-sm text-success" /></div>
+                <div className="text-center py-3">
+                  <div className="spinner-border spinner-border-sm text-success" />
+                </div>
               ) : years.length === 0 ? (
                 <div className="text-center py-4 text-muted" style={{ fontSize: '0.82rem' }}>
-                  No Ramzan years yet.<br />Click + to add one.
+                  No Ramzan years yet.
+                  {isAdmin && <><br />Click + to add one.</>}
                 </div>
               ) : (
                 <ul className="list-group list-group-flush">
@@ -378,7 +422,7 @@ export default function Ramzan() {
             </div>
           ) : (
             <>
-              {/* Year header with inline editing */}
+              {/* Year header */}
               <div className="card mb-3" style={{ background: 'linear-gradient(135deg, #1a2035, #253050)', color: '#fff', border: 'none' }}>
                 <div className="card-body d-flex align-items-start justify-content-between">
                   <div>
@@ -404,7 +448,9 @@ export default function Ramzan() {
                       />
                     </p>
                     {selectedYear.notes && (
-                      <p style={{ margin: '4px 0 0', opacity: 0.55, fontSize: '0.8rem' }}>{selectedYear.notes}</p>
+                      <p style={{ margin: '4px 0 0', opacity: 0.55, fontSize: '0.8rem' }}>
+                        {selectedYear.notes}
+                      </p>
                     )}
                   </div>
                   <div>
@@ -474,7 +520,8 @@ export default function Ramzan() {
                 </div>
 
                 <div className="card-body">
-                  {/* CONTRIBUTIONS TAB */}
+
+                  {/* ── CONTRIBUTIONS TAB ── */}
                   {activeTab === 'contributions' && (
                     <>
                       <div className="d-flex justify-content-between align-items-center mb-3">
@@ -491,26 +538,47 @@ export default function Ramzan() {
                             {formatCurrency(totalContribs)} of {formatCurrency(selectedYear.expected_salary)} target
                           </small>
                         </div>
-                        <button className="btn btn-success btn-sm" onClick={() => setShowContribForm(!showContribForm)}>
-                          <i className={`fas ${showContribForm ? 'fa-times' : 'fa-plus'} mr-1`} />
-                          {showContribForm ? 'Cancel' : 'Add Member'}
-                        </button>
+                        {isAdmin && (
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() => setShowContribForm(!showContribForm)}
+                          >
+                            <i className={`fas ${showContribForm ? 'fa-times' : 'fa-plus'} mr-1`} />
+                            {showContribForm ? 'Cancel' : 'Add Member'}
+                          </button>
+                        )}
                       </div>
 
-                      {showContribForm && (
-                        <form onSubmit={handleAddContrib} className="p-3 mb-3 rounded" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                      {/* Contribution form — Admins only */}
+                      {showContribForm && isAdmin && (
+                        <form
+                          onSubmit={handleAddContrib}
+                          className="p-3 mb-3 rounded"
+                          style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}
+                        >
                           <div className="row">
                             <div className="col-md-5">
                               <div className="form-group mb-2">
                                 <label>Member Name *</label>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  placeholder="Full name"
-                                  value={contribForm.member_name}
-                                  onChange={e => setContribForm(f => ({ ...f, member_name: e.target.value }))}
-                                  required
-                                />
+                                {jamatMembers.length > 0 ? (
+                                  <select
+                                    className="form-control form-control-sm"
+                                    value={contribForm.jamat_member_id}
+                                    onChange={e => setContribForm(f => ({ ...f, jamat_member_id: e.target.value }))}
+                                    required
+                                  >
+                                    <option value="">— Select Member —</option>
+                                    {jamatMembers.map(m => (
+                                      <option key={m.id} value={m.id}>{m.name}</option>
+                                    ))}
+                                  </select>
+                                ) : (
+                                  <div className="alert alert-warning py-1 px-2 mb-0" style={{ fontSize: '0.8rem' }}>
+                                    <i className="fas fa-exclamation-triangle mr-1" />
+                                    No members found.{' '}
+                                    <a href="/jamat-members" target="_blank" rel="noreferrer">Add members first</a>
+                                  </div>
+                                )}
                               </div>
                             </div>
                             <div className="col-md-3">
@@ -539,16 +607,40 @@ export default function Ramzan() {
                               </div>
                             </div>
                           </div>
-                          <div className="form-group mb-2">
-                            <label>Notes</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={contribForm.notes}
-                              onChange={e => setContribForm(f => ({ ...f, notes: e.target.value }))}
-                            />
+                          <div className="row">
+                            <div className="col-md-4">
+                              <div className="form-group mb-2">
+                                <label>Payment Mode</label>
+                                <select
+                                  className="form-control form-control-sm"
+                                  value={contribForm.payment_mode}
+                                  onChange={e => setContribForm(f => ({ ...f, payment_mode: e.target.value }))}
+                                >
+                                  <option>Cash</option>
+                                  <option>Bank Transfer</option>
+                                  <option>UPI</option>
+                                  <option>Cheque</option>
+                                </select>
+                              </div>
+                            </div>
+                            <div className="col-md-8">
+                              <div className="form-group mb-2">
+                                <label>Notes</label>
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  placeholder="Optional"
+                                  value={contribForm.notes}
+                                  onChange={e => setContribForm(f => ({ ...f, notes: e.target.value }))}
+                                />
+                              </div>
+                            </div>
                           </div>
-                          <button type="submit" className="btn btn-success btn-sm" disabled={saving}>
+                          <button
+                            type="submit"
+                            className="btn btn-success btn-sm"
+                            disabled={saving || jamatMembers.length === 0}
+                          >
                             {saving ? 'Saving...' : 'Add Contribution'}
                           </button>
                         </form>
@@ -567,23 +659,30 @@ export default function Ramzan() {
                                 <th>Member Name</th>
                                 <th>Amount</th>
                                 <th>Payment Date</th>
+                                <th>Mode</th>
                                 <th>Notes</th>
-                                <th />
+                                {isAdmin && <th />}
                               </tr>
                             </thead>
                             <tbody>
                               {contributions.map((c, i) => (
                                 <tr key={c.id}>
                                   <td style={{ color: '#9ca3af' }}>{i + 1}</td>
-                                  <td><strong>{c.member_name}</strong></td>
+                                  <td><strong>{getMemberName(c)}</strong></td>
                                   <td className="amount-positive">{formatCurrency(c.amount)}</td>
                                   <td>{formatDate(c.payment_date)}</td>
+                                  <td style={{ fontSize: '0.85rem' }}>{c.payment_mode || '—'}</td>
                                   <td>{c.notes || <span className="text-muted">—</span>}</td>
-                                  <td>
-                                    <button className="btn btn-xs btn-outline-danger" onClick={() => handleDeleteContrib(c.id)}>
-                                      <i className="fas fa-trash" />
-                                    </button>
-                                  </td>
+                                  {isAdmin && (
+                                    <td>
+                                      <button
+                                        className="btn btn-xs btn-outline-danger"
+                                        onClick={() => handleDeleteContrib(c.id)}
+                                      >
+                                        <i className="fas fa-trash" />
+                                      </button>
+                                    </td>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>
@@ -591,7 +690,7 @@ export default function Ramzan() {
                               <tr style={{ background: '#f0fdf4', fontWeight: '700' }}>
                                 <td colSpan={2}>Total — {contributions.length} members</td>
                                 <td className="amount-positive">{formatCurrency(totalContribs)}</td>
-                                <td colSpan={3} />
+                                <td colSpan={isAdmin ? 4 : 3} />
                               </tr>
                             </tfoot>
                           </table>
@@ -600,21 +699,31 @@ export default function Ramzan() {
                     </>
                   )}
 
-                  {/* EXPENSES TAB */}
+                  {/* ── EXPENSES TAB ── */}
                   {activeTab === 'expenses' && (
                     <>
                       <div className="d-flex justify-content-between align-items-center mb-3">
                         <span className="text-muted" style={{ fontSize: '0.85rem' }}>
                           Total: <strong className="amount-negative">{formatCurrency(totalRamzanExp)}</strong>
                         </span>
-                        <button className="btn btn-danger btn-sm" onClick={() => setShowExpenseForm(!showExpenseForm)}>
-                          <i className={`fas ${showExpenseForm ? 'fa-times' : 'fa-plus'} mr-1`} />
-                          {showExpenseForm ? 'Cancel' : 'Add Expense'}
-                        </button>
+                        {isAdmin && (
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => setShowExpenseForm(!showExpenseForm)}
+                          >
+                            <i className={`fas ${showExpenseForm ? 'fa-times' : 'fa-plus'} mr-1`} />
+                            {showExpenseForm ? 'Cancel' : 'Add Expense'}
+                          </button>
+                        )}
                       </div>
 
-                      {showExpenseForm && (
-                        <form onSubmit={handleAddExpense} className="p-3 mb-3 rounded" style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}>
+                      {/* Expense form — Admins only */}
+                      {showExpenseForm && isAdmin && (
+                        <form
+                          onSubmit={handleAddExpense}
+                          className="p-3 mb-3 rounded"
+                          style={{ background: '#f9fafb', border: '1px solid #e5e7eb' }}
+                        >
                           <div className="row">
                             <div className="col-md-6">
                               <div className="form-group mb-2">
@@ -668,7 +777,9 @@ export default function Ramzan() {
                       )}
 
                       {ramzanExpenses.length === 0 ? (
-                        <div className="text-center py-4 text-muted"><p>No Ramzan expenses yet.</p></div>
+                        <div className="text-center py-4 text-muted">
+                          <p>No Ramzan expenses yet.</p>
+                        </div>
                       ) : (
                         <div className="table-responsive">
                           <table className="table table-hover mb-0">
@@ -679,7 +790,7 @@ export default function Ramzan() {
                                 <th>Amount</th>
                                 <th>Notes</th>
                                 <th>Bill</th>
-                                <th />
+                                {isAdmin && <th />}
                               </tr>
                             </thead>
                             <tbody>
@@ -690,17 +801,21 @@ export default function Ramzan() {
                                   <td className="amount-negative">{formatCurrency(e.amount)}</td>
                                   <td>{e.notes || <span className="text-muted">—</span>}</td>
                                   <td>
-                                    {e.bill_url ? (
-                                      <span className="badge badge-warning">
-                                        <i className="fas fa-file mr-1" />Bill
-                                      </span>
-                                    ) : <span className="text-muted">—</span>}
+                                    {e.bill_url
+                                      ? <span className="badge badge-warning"><i className="fas fa-file mr-1" />Bill</span>
+                                      : <span className="text-muted">—</span>
+                                    }
                                   </td>
-                                  <td>
-                                    <button className="btn btn-xs btn-outline-danger" onClick={() => handleDeleteExpense(e.id)}>
-                                      <i className="fas fa-trash" />
-                                    </button>
-                                  </td>
+                                  {isAdmin && (
+                                    <td>
+                                      <button
+                                        className="btn btn-xs btn-outline-danger"
+                                        onClick={() => handleDeleteExpense(e.id)}
+                                      >
+                                        <i className="fas fa-trash" />
+                                      </button>
+                                    </td>
+                                  )}
                                 </tr>
                               ))}
                             </tbody>
@@ -708,7 +823,7 @@ export default function Ramzan() {
                               <tr style={{ background: '#fff5f5', fontWeight: '700' }}>
                                 <td colSpan={2}>Total</td>
                                 <td className="amount-negative">{formatCurrency(totalRamzanExp)}</td>
-                                <td colSpan={3} />
+                                <td colSpan={isAdmin ? 3 : 2} />
                               </tr>
                             </tfoot>
                           </table>
@@ -716,6 +831,7 @@ export default function Ramzan() {
                       )}
                     </>
                   )}
+
                 </div>
               </div>
             </>
