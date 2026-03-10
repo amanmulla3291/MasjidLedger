@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { supabase, signOut } from '../lib/supabaseClient'
+import { supabase, signOut, isWhitelisted, getUserRole, upsertUser } from '../lib/supabaseClient'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
@@ -9,34 +9,58 @@ export function AuthProvider({ children }) {
   const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
   const handlingUser = useRef(false)
+  const didInit = useRef(false)
 
   useEffect(() => {
-    const timeout = setTimeout(() => setLoading(false), 4000)
+    // Hard fallback — never stay stuck more than 5s no matter what
+    const hardTimeout = setTimeout(() => {
+      setLoading(false)
+    }, 5000)
+
+    // On PWA reopen, proactively check the existing session immediately.
+    // This handles the case where onAuthStateChange fires too late.
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (didInit.current) return
+      didInit.current = true
+      clearTimeout(hardTimeout)
+      if (session?.user) {
+        handleUser(session.user)
+      } else {
+        setLoading(false)
+      }
+    })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      clearTimeout(timeout)
-
       if (event === 'INITIAL_SESSION') {
+        // Skip if getSession() already handled it
+        if (didInit.current) return
+        didInit.current = true
+        clearTimeout(hardTimeout)
         if (session?.user) {
           await handleUser(session.user)
         } else {
           setLoading(false)
         }
       } else if (event === 'SIGNED_IN') {
+        clearTimeout(hardTimeout)
         if (session?.user) await handleUser(session.user)
       } else if (event === 'SIGNED_OUT') {
         setUser(null)
         setRole(null)
         setLoading(false)
       } else if (event === 'TOKEN_REFRESHED') {
-        if (session?.user) await handleUser(session.user)
+        // Silent refresh — just update state, no loading flash
+        if (session?.user) {
+          setUser(session.user)
+          setRole(getUserRole(session.user.email))
+        }
       } else {
         setLoading(false)
       }
     })
 
     return () => {
-      clearTimeout(timeout)
+      clearTimeout(hardTimeout)
       subscription.unsubscribe()
     }
   }, [])
@@ -46,17 +70,7 @@ export function AuthProvider({ children }) {
     handlingUser.current = true
 
     try {
-      // ── Check database for this user's role ──────────────
-      // This replaces the hardcoded WHITELISTED_USERS array so
-      // any user added via the Users page can log in immediately.
-      const { data: dbUser, error } = await supabase
-        .from('users')
-        .select('role')
-        .eq('email', authUser.email.toLowerCase())
-        .single()
-
-      if (error || !dbUser) {
-        // Not in the users table — access denied
+      if (!isWhitelisted(authUser.email)) {
         toast.error('Access denied. Contact the administrator to get access.')
         await signOut()
         setUser(null)
@@ -65,17 +79,13 @@ export function AuthProvider({ children }) {
         return
       }
 
-      // User exists in DB — set them up
+      const userRole = getUserRole(authUser.email)
       setUser(authUser)
-      setRole(dbUser.role)
+      setRole(userRole)
       setLoading(false)
 
-      // Update their name in background in case it changed
-      supabase
-        .from('users')
-        .update({ name: authUser.user_metadata?.full_name || authUser.email })
-        .eq('email', authUser.email.toLowerCase())
-        .then(() => {})
+      // Sync user record in background
+      upsertUser(authUser).catch(() => {})
 
     } catch {
       setLoading(false)
