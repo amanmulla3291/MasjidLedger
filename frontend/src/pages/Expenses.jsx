@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { getExpenses, addExpense, deleteExpense, uploadFile, getSignedUrl } from '../lib/supabaseClient'
+import { getExpenses, addExpense, deleteExpense, uploadFile, getSignedUrl, supabase, logAudit } from '../lib/supabaseClient'
+
 import { useAuth } from '../hooks/useAuth'
 import {
   formatDate, formatCurrency, getCurrentYear,
@@ -58,21 +59,21 @@ export default function Expenses() {
 
     if (files.before) {
       const path = `expenses/${generateUniqueFileName(files.before.name)}`
-      const { url } = await uploadFile('expense-images', files.before, path)
-      before_photo_url = url
+      const { publicUrl } = await uploadFile('expense-images', files.before, path)
+      before_photo_url = publicUrl
     }
     if (files.after) {
       const path = `expenses/${generateUniqueFileName(files.after.name)}`
-      const { url } = await uploadFile('expense-images', files.after, path)
-      after_photo_url = url
+      const { publicUrl } = await uploadFile('expense-images', files.after, path)
+      after_photo_url = publicUrl
     }
     if (files.bill) {
       const path = `bills/${generateUniqueFileName(files.bill.name)}`
-      const { url } = await uploadFile('expense-bills', files.bill, path)
-      bill_url = url
+      const { publicUrl } = await uploadFile('expense-bills', files.bill, path)
+      bill_url = publicUrl
     }
 
-    const { error } = await addExpense({
+    const { data, error } = await addExpense({
       ...form,
       amount: parseFloat(form.amount),
       before_photo_url,
@@ -84,6 +85,19 @@ export default function Expenses() {
     if (error) {
       toast.error('Failed: ' + error.message)
     } else {
+      const fileNote = [
+        before_photo_url && 'before photo',
+        after_photo_url && 'after photo',
+        bill_url && 'bill',
+      ].filter(Boolean)
+
+      await logAudit(supabase, {
+        action: 'CREATE',
+        table_name: 'expenses',
+        record_id: data?.id,
+        description: `Added expense "${form.title}" (${form.category}) ${formatCurrency(form.amount)} on ${formatDate(form.date)}${fileNote.length ? ' — with ' + fileNote.join(', ') : ''}`,
+        performed_by: user?.email,
+      })
       toast.success('Expense recorded!')
       setForm(DEFAULT_FORM)
       setFiles({ before: null, after: null, bill: null })
@@ -93,29 +107,32 @@ export default function Expenses() {
     setSaving(false)
   }
 
-  async function handleDelete(id) {
+  async function handleDelete(id, title, amount, date) {
     if (!confirm('Delete this expense?')) return
     const { error } = await deleteExpense(id)
-    if (error) toast.error('Delete failed')
-    else { toast.success('Deleted'); load() }
+    if (error) {
+      toast.error('Delete failed')
+    } else {
+      await logAudit(supabase, {
+        action: 'DELETE',
+        table_name: 'expenses',
+        record_id: id,
+        description: `Deleted expense "${title}" ${formatCurrency(amount)} on ${formatDate(date)}`,
+        performed_by: user?.email,
+      })
+      toast.success('Deleted')
+      load()
+    }
   }
 
-  async function viewDetails(expense) {
+  function viewDetails(expense) {
     setViewExpense(expense)
-    const urls = {}
-    if (expense.before_photo_url) {
-      const { url } = await getSignedUrl('expense-images', expense.before_photo_url)
-      urls.before = url
-    }
-    if (expense.after_photo_url) {
-      const { url } = await getSignedUrl('expense-images', expense.after_photo_url)
-      urls.after = url
-    }
-    if (expense.bill_url) {
-      const { url } = await getSignedUrl('expense-bills', expense.bill_url)
-      urls.bill = url
-    }
-    setSignedUrls(urls)
+    // URLs are now stored as public URLs directly — no signed URL fetch needed
+    setSignedUrls({
+      before: expense.before_photo_url || null,
+      after: expense.after_photo_url || null,
+      bill: expense.bill_url || null,
+    })
   }
 
   const filtered = filterCategory === 'all'
@@ -296,7 +313,10 @@ export default function Expenses() {
               </div>
 
               <button type="submit" className="btn btn-danger" disabled={saving}>
-                {saving ? <><span className="spinner-border spinner-border-sm mr-2" />Uploading &amp; Saving...</> : 'Save Expense'}
+                {saving
+                  ? <><span className="spinner-border spinner-border-sm mr-2" />Uploading &amp; Saving...</>
+                  : 'Save Expense'
+                }
               </button>
             </form>
           </div>
@@ -334,9 +354,7 @@ export default function Expenses() {
                     <tr key={e.id}>
                       <td>{formatDate(e.date)}</td>
                       <td><strong>{e.title}</strong></td>
-                      <td>
-                        <span className="badge badge-secondary">{e.category}</span>
-                      </td>
+                      <td><span className="badge badge-secondary">{e.category}</span></td>
                       <td className="amount-negative">{formatCurrency(e.amount)}</td>
                       <td>{e.notes || <span className="text-muted">—</span>}</td>
                       <td>
@@ -371,7 +389,7 @@ export default function Expenses() {
                           {isAdmin && (
                             <button
                               className="btn btn-xs btn-outline-danger"
-                              onClick={() => handleDelete(e.id)}
+                              onClick={() => handleDelete(e.id, e.title, e.amount, e.date)}
                             >
                               <i className="fas fa-trash" />
                             </button>
