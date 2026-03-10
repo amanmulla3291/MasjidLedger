@@ -1,8 +1,11 @@
 import { createContext, useContext, useEffect, useState, useRef } from 'react'
-import { supabase, signOut, isWhitelisted, getUserRole, upsertUser } from '../lib/supabaseClient'
+import { supabase, signOut, upsertUser } from '../lib/supabaseClient'
 import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
+
+// Primary admins — always have access even if DB is unreachable
+const PRIMARY_ADMINS = ['amanmulla.aws@gmail.com', 'altabmulla36@gmail.com']
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -12,13 +15,10 @@ export function AuthProvider({ children }) {
   const didInit = useRef(false)
 
   useEffect(() => {
-    // Hard fallback — never stay stuck more than 5s no matter what
-    const hardTimeout = setTimeout(() => {
-      setLoading(false)
-    }, 5000)
+    // Hard fallback — never stay stuck more than 6s
+    const hardTimeout = setTimeout(() => setLoading(false), 6000)
 
-    // On PWA reopen, proactively check the existing session immediately.
-    // This handles the case where onAuthStateChange fires too late.
+    // Proactively check session on mount (fixes PWA reopen freeze)
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (didInit.current) return
       didInit.current = true
@@ -32,15 +32,11 @@ export function AuthProvider({ children }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'INITIAL_SESSION') {
-        // Skip if getSession() already handled it
         if (didInit.current) return
         didInit.current = true
         clearTimeout(hardTimeout)
-        if (session?.user) {
-          await handleUser(session.user)
-        } else {
-          setLoading(false)
-        }
+        if (session?.user) await handleUser(session.user)
+        else setLoading(false)
       } else if (event === 'SIGNED_IN') {
         clearTimeout(hardTimeout)
         if (session?.user) await handleUser(session.user)
@@ -49,10 +45,9 @@ export function AuthProvider({ children }) {
         setRole(null)
         setLoading(false)
       } else if (event === 'TOKEN_REFRESHED') {
-        // Silent refresh — just update state, no loading flash
+        // Silent refresh — no loading flash needed
         if (session?.user) {
           setUser(session.user)
-          setRole(getUserRole(session.user.email))
         }
       } else {
         setLoading(false)
@@ -70,8 +65,27 @@ export function AuthProvider({ children }) {
     handlingUser.current = true
 
     try {
-      if (!isWhitelisted(authUser.email)) {
-        toast.error('Access denied. Contact the administrator to get access.')
+      const email = authUser.email?.toLowerCase()
+
+      // Always allow primary admins (bootstrap safety net)
+      if (PRIMARY_ADMINS.includes(email)) {
+        setUser(authUser)
+        setRole('admin')
+        setLoading(false)
+        upsertUser(authUser).catch(() => {})
+        return
+      }
+
+      // Look up user in the database — this is the source of truth
+      const { data, error } = await supabase
+        .from('users')
+        .select('role')
+        .eq('email', email)
+        .single()
+
+      if (error || !data) {
+        // Not in database = no access
+        toast.error('Access denied. Ask an admin to add your email in User Management.')
         await signOut()
         setUser(null)
         setRole(null)
@@ -79,12 +93,12 @@ export function AuthProvider({ children }) {
         return
       }
 
-      const userRole = getUserRole(authUser.email)
+      // User exists in DB — grant access with their role
       setUser(authUser)
-      setRole(userRole)
+      setRole(data.role)
       setLoading(false)
 
-      // Sync user record in background
+      // Keep DB record in sync with latest auth metadata
       upsertUser(authUser).catch(() => {})
 
     } catch {
