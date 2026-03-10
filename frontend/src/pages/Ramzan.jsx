@@ -252,10 +252,15 @@ export default function Ramzan() {
     }
   }
 
-  function handleExportPDF() {
+  async function handleExportPDF() {
     if (!selectedYear || contributions.length === 0) return toast.error('No contributions to export')
-    generateRamzanPDF(selectedYear, contributions)
-    toast.success('PDF generated!')
+    toast.loading('Generating PDF...', { id: 'pdf' })
+    try {
+      await generateRamzanPDF(selectedYear, contributions)
+      toast.success('PDF downloaded!', { id: 'pdf' })
+    } catch {
+      toast.error('PDF generation failed', { id: 'pdf' })
+    }
   }
 
   function getMemberName(c) {

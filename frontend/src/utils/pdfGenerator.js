@@ -1,31 +1,80 @@
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { formatDate, formatCurrency } from './helpers'
+import { formatDate } from './helpers'
 
-// ── Shared helpers ───────────────────────────────────────────
-
+// ── Constants ────────────────────────────────────────────────
 const MASJID_NAME = 'Sunni Jamma Masjid, Tambave'
-const GREEN = [26, 92, 42]
+const GREEN       = [26, 92, 42]
 const LIGHT_GREEN = [240, 253, 244]
-const RED = [180, 30, 30]
-const LIGHT_RED = [255, 240, 240]
+const RED         = [180, 30, 30]
+const LIGHT_RED   = [255, 240, 240]
 
 function rupees(amount) {
   return `Rs. ${Number(amount).toLocaleString('en-IN')}`
 }
 
-function generatedOn() {
-  return `Generated on ${new Date().toLocaleDateString('en-IN', {
-    day: '2-digit', month: 'long', year: 'numeric',
-  })}`
+function todayStr() {
+  return new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' })
 }
 
+// ── Load Devanagari-capable font from Google Fonts ───────────
+// Returns a base64 string of the font, or null if fetch fails.
+async function loadDevanagariFont() {
+  try {
+    // Fetch the CSS first to get the actual TTF/WOFF2 URL
+    const cssRes = await fetch(
+      'https://fonts.googleapis.com/css2?family=Noto+Sans+Devanagari:wght@400;700&display=swap',
+      { headers: { 'User-Agent': 'Mozilla/5.0' } }
+    )
+    const css = await cssRes.text()
+
+    // Extract font URL from CSS
+    const match = css.match(/src: url\(([^)]+\.ttf[^)]*)\)/)
+      || css.match(/src: url\(([^)]+\.woff2[^)]*)\)/)
+    if (!match) return null
+
+    const fontUrl = match[1].replace(/'/g, '')
+    const fontRes = await fetch(fontUrl)
+    const buffer  = await fontRes.arrayBuffer()
+    const bytes   = new Uint8Array(buffer)
+    let binary = ''
+    for (let i = 0; i < bytes.byteLength; i++) binary += String.fromCharCode(bytes[i])
+    return btoa(binary)
+  } catch {
+    return null
+  }
+}
+
+// ── Register font with jsPDF if available ───────────────────
+async function getDocWithFont(landscape = false) {
+  const doc = new jsPDF(landscape ? 'landscape' : 'portrait')
+  try {
+    const b64 = await loadDevanagariFont()
+    if (b64) {
+      doc.addFileToVFS('NotoSansDevanagari.ttf', b64)
+      doc.addFont('NotoSansDevanagari.ttf', 'NotoSansDevanagari', 'normal')
+    }
+  } catch {
+    // Font load failed — fall back to helvetica (Marathi will show as boxes,
+    // but PDF will still generate)
+  }
+  return doc
+}
+
+// ── Helper: use Devanagari font for a cell if available ──────
+function cellFont(doc) {
+  const fonts = doc.getFontList()
+  return fonts['NotoSansDevanagari'] ? 'NotoSansDevanagari' : 'helvetica'
+}
+
+// ── Shared header ────────────────────────────────────────────
 function addHeader(doc, title, subtitle = null, landscape = false) {
   const center = landscape ? 148 : 105
+  const font   = cellFont(doc)
 
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(18)
-  doc.setTextColor(26, 92, 42)
+  doc.setFontSize(17)
+  doc.setTextColor(...GREEN)
   doc.text(MASJID_NAME, center, 18, { align: 'center' })
 
   doc.setFontSize(12)
@@ -36,7 +85,7 @@ function addHeader(doc, title, subtitle = null, landscape = false) {
   let y = 27
   if (subtitle) {
     doc.setFontSize(10)
-    doc.setTextColor(100, 100, 100)
+    doc.setTextColor(100)
     doc.text(subtitle, center, 34, { align: 'center' })
     y = 34
   }
@@ -48,80 +97,120 @@ function addHeader(doc, title, subtitle = null, landscape = false) {
   return y + 10
 }
 
+// ── Shared footer ────────────────────────────────────────────
 function addFooter(doc, landscape = false) {
-  const pageCount = doc.internal.getNumberOfPages()
-  const pageW = landscape ? 297 : 210
-
-  for (let i = 1; i <= pageCount; i++) {
+  const pages = doc.internal.getNumberOfPages()
+  const w     = landscape ? 297 : 210
+  for (let i = 1; i <= pages; i++) {
     doc.setPage(i)
     doc.setFontSize(8)
-    doc.setTextColor(140)
-    doc.text(generatedOn(), 14, doc.internal.pageSize.height - 8)
+    doc.setTextColor(150)
+    doc.text(`Generated on ${todayStr()}`, 14, doc.internal.pageSize.height - 8)
     doc.text(
-      `${MASJID_NAME} — Private Record | Page ${i} of ${pageCount}`,
-      pageW - 14,
-      doc.internal.pageSize.height - 8,
-      { align: 'right' }
+      `${MASJID_NAME} — Private Record | Page ${i} of ${pages}`,
+      w - 14, doc.internal.pageSize.height - 8, { align: 'right' }
     )
   }
 }
 
-function table(doc, { startY, head, body, foot, headColor, footColor, footTextColor, colStyles }) {
+// ── Shared table helper ──────────────────────────────────────
+function drawTable(doc, { startY, head, body, foot, headColor, footColor, colStyles }) {
+  const font = cellFont(doc)
   autoTable(doc, {
     startY,
     head,
     body,
     foot,
     theme: 'striped',
-    headStyles: {
-      fillColor: headColor || GREEN,
-      textColor: 255,
-      fontStyle: 'bold',
-      fontSize: 9,
-    },
-    footStyles: {
-      fillColor: footColor || LIGHT_GREEN,
-      textColor: footTextColor || [0, 0, 0],
-      fontStyle: 'bold',
-      fontSize: 9,
-    },
-    bodyStyles: { fontSize: 9, cellPadding: 3 },
-    alternateRowStyles: { fillColor: [250, 255, 250] },
-    columnStyles: colStyles || {},
-    margin: { left: 14, right: 14 },
-    didParseCell(data) {
-      // Colour income green, expense red in ledger
-      if (data.column.index === 4 && data.section === 'body') {
-        data.cell.styles.textColor = [0, 128, 0]
-      }
-      if (data.column.index === 5 && data.section === 'body') {
-        data.cell.styles.textColor = [200, 0, 0]
-      }
-    },
+    headStyles:          { fillColor: headColor || GREEN, textColor: 255, fontStyle: 'bold', fontSize: 9 },
+    footStyles:          { fillColor: footColor || LIGHT_GREEN, textColor: [0,0,0], fontStyle: 'bold', fontSize: 9 },
+    bodyStyles:          { fontSize: 9, cellPadding: 3, font },
+    alternateRowStyles:  { fillColor: [250, 255, 250] },
+    columnStyles:        colStyles || {},
+    margin:              { left: 14, right: 14 },
   })
   return doc.lastAutoTable.finalY
 }
 
-// ── 1. Friday Collections Monthly PDF ───────────────────────
+// ════════════════════════════════════════════════════════════
+// 1. RAMZAN EID REPORT  ← Marathi names supported
+// ════════════════════════════════════════════════════════════
+export async function generateRamzanPDF(ramzanYear, contributions) {
+  const doc     = await getDocWithFont()
+  const subtitle = `Hafiz: ${ramzanYear.hafiz_name} | Year: ${ramzanYear.year}`
+  const startY  = addHeader(doc, 'Ramzan Contribution Report', subtitle)
 
-export function generateMonthlyCollectionPDF(year, month, collections, monthName) {
-  const doc = new jsPDF()
-  const startY = addHeader(doc, `Friday Collections — ${monthName} ${year}`)
+  const paid    = contributions.filter(c => c.payment_status !== 'pending')
+  const pending = contributions.filter(c => c.payment_status === 'pending')
+  const totalPaid    = paid.reduce((s, c) => s + Number(c.amount), 0)
+  const totalPending = pending.reduce((s, c) => s + Number(c.amount), 0)
+  const expected     = Number(ramzanYear.expected_salary || 0)
 
-  const body = collections.map((c, i) => [
-    i + 1,
-    formatDate(c.date),
-    c.notes || '—',
-    rupees(c.amount),
-  ])
+  // Summary box
+  doc.setFillColor(...LIGHT_GREEN)
+  doc.roundedRect(14, startY, 182, 22, 2, 2, 'F')
+  doc.setFontSize(9)
+  doc.setTextColor(40)
+  doc.text(`Total Collected: ${rupees(totalPaid)}`,          20, startY + 8)
+  doc.text(`Pending: ${rupees(totalPending)}`,               80, startY + 8)
+  doc.text(`Salary Target: ${rupees(expected)}`,            148, startY + 8)
+  doc.text(`Total Members: ${contributions.length}`,         20, startY + 17)
+  doc.text(`Paid: ${paid.length}  |  Pending: ${pending.length}`, 80, startY + 17)
+  const bal = totalPaid - expected
+  doc.setTextColor(bal >= 0 ? 0 : 200, bal >= 0 ? 128 : 0, 0)
+  doc.text(`Balance: ${rupees(bal)}`,                       148, startY + 17)
+  doc.setTextColor(40)
 
-  const total = collections.reduce((s, c) => s + Number(c.amount), 0)
+  // Table — member names rendered with Devanagari font
+  const body = contributions.map((c, i) => {
+    const name   = c.jamat_members?.name || c.member_name || '—'
+    const status = c.payment_status === 'pending' ? 'Pending' : 'Paid'
+    return [i + 1, name, c.payment_date ? formatDate(c.payment_date) : '—',
+      rupees(c.amount), c.payment_mode || 'Cash', status, c.notes || '—']
+  })
 
-  table(doc, {
-    startY,
-    head: [['#', 'Date', 'Notes', 'Amount']],
+  const finalY = drawTable(doc, {
+    startY: startY + 27,
+    head:   [['#', 'Member Name', 'Date', 'Amount', 'Mode', 'Status', 'Notes']],
     body,
-    foot: [['', `Total Fridays: ${collections.length}`, '', rupees(total)]],
+    foot:   [['', `Members: ${contributions.length}`, '', rupees(totalPaid + totalPending), '', '', '']],
+    colStyles: {
+      0: { cellWidth: 10 },
+      1: { cellWidth: 48 },
+      2: { cellWidth: 28 },
+      3: { cellWidth: 30, halign: 'right' },
+      4: { cellWidth: 22 },
+      5: { cellWidth: 20 },
+      6: { cellWidth: 32 },
+    },
+  })
+
+  if (pending.length > 0) {
+    doc.setFontSize(9)
+    doc.setTextColor(180, 60, 0)
+    doc.text(
+      `⚠  ${pending.length} member(s) have pending payments totalling ${rupees(totalPending)}`,
+      14, finalY + 10
+    )
+  }
+
+  addFooter(doc)
+  doc.save(`Ramzan_Report_${ramzanYear.year}.pdf`)
+}
+
+// ════════════════════════════════════════════════════════════
+// 2. FRIDAY COLLECTIONS MONTHLY PDF
+// ════════════════════════════════════════════════════════════
+export function generateMonthlyCollectionPDF(year, month, collections, monthName) {
+  const doc    = new jsPDF()
+  const startY = addHeader(doc, `Friday Collections — ${monthName} ${year}`)
+  const total  = collections.reduce((s, c) => s + Number(c.amount), 0)
+
+  drawTable(doc, {
+    startY,
+    head:  [['#', 'Date', 'Notes', 'Amount']],
+    body:  collections.map((c, i) => [i + 1, formatDate(c.date), c.notes || '—', rupees(c.amount)]),
+    foot:  [['', `Total Fridays: ${collections.length}`, '', rupees(total)]],
     colStyles: {
       0: { cellWidth: 12 },
       1: { cellWidth: 38 },
@@ -134,136 +223,48 @@ export function generateMonthlyCollectionPDF(year, month, collections, monthName
   doc.save(`Friday_Collections_${monthName}_${year}.pdf`)
 }
 
-// ── 2. Ramzan Eid Report PDF ─────────────────────────────────
-
-export function generateRamzanPDF(ramzanYear, contributions) {
-  const doc = new jsPDF()
-
-  const subtitle = `Hafiz: ${ramzanYear.hafiz_name} | Year: ${ramzanYear.year}`
-  const startY = addHeader(doc, 'Ramzan Contribution Report', subtitle)
-
-  // Summary box
-  const paidContribs = contributions.filter(c => c.payment_status !== 'pending')
-  const pendingContribs = contributions.filter(c => c.payment_status === 'pending')
-  const totalPaid = paidContribs.reduce((s, c) => s + Number(c.amount), 0)
-  const totalPending = pendingContribs.reduce((s, c) => s + Number(c.amount), 0)
-  const expectedSalary = Number(ramzanYear.expected_salary || 0)
-
-  doc.setFillColor(...LIGHT_GREEN)
-  doc.roundedRect(14, startY, 182, 22, 2, 2, 'F')
-  doc.setFontSize(9)
-  doc.setTextColor(40)
-  doc.text(`Total Collected: ${rupees(totalPaid)}`, 20, startY + 8)
-  doc.text(`Pending: ${rupees(totalPending)}`, 80, startY + 8)
-  doc.text(`Hafiz Salary Target: ${rupees(expectedSalary)}`, 140, startY + 8)
-  doc.text(`Total Members: ${contributions.length}`, 20, startY + 17)
-  doc.text(`Paid: ${paidContribs.length}  |  Pending: ${pendingContribs.length}`, 80, startY + 17)
-  const balance = totalPaid - expectedSalary
-  doc.setTextColor(balance >= 0 ? 0 : 200, balance >= 0 ? 128 : 0, 0)
-  doc.text(`Balance: ${rupees(balance)}`, 140, startY + 17)
-
-  // Contributions table
-  doc.setTextColor(40)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.text('Member Contributions', 14, startY + 30)
-
-  const body = contributions.map((c, i) => {
-    const memberName = c.jamat_members?.name || c.member_name || '—'
-    const status = c.payment_status === 'pending' ? 'Pending' : 'Paid'
-    return [
-      i + 1,
-      memberName,
-      c.payment_date ? formatDate(c.payment_date) : '—',
-      rupees(c.amount),
-      c.payment_mode || 'Cash',
-      status,
-      c.notes || '—',
-    ]
-  })
-
-  const finalY = table(doc, {
-    startY: startY + 33,
-    head: [['#', 'Member Name', 'Date', 'Amount', 'Mode', 'Status', 'Notes']],
-    body,
-    foot: [[
-      '', `Members: ${contributions.length}`, '',
-      rupees(totalPaid + totalPending), '', '', ''
-    ]],
-    colStyles: {
-      0: { cellWidth: 10 },
-      1: { cellWidth: 45 },
-      2: { cellWidth: 28 },
-      3: { cellWidth: 30, halign: 'right' },
-      4: { cellWidth: 22 },
-      5: { cellWidth: 20 },
-      6: { cellWidth: 35 },
-    },
-  })
-
-  // Pending members note
-  if (pendingContribs.length > 0) {
-    doc.setFontSize(9)
-    doc.setTextColor(180, 60, 0)
-    doc.text(`⚠ ${pendingContribs.length} member(s) have pending payments totalling ${rupees(totalPending)}`, 14, finalY + 10)
-  }
-
-  addFooter(doc)
-  doc.save(`Ramzan_Report_${ramzanYear.year}.pdf`)
-}
-
-// ── 3. Full Ledger PDF ───────────────────────────────────────
-
+// ════════════════════════════════════════════════════════════
+// 3. FULL LEDGER PDF
+// ════════════════════════════════════════════════════════════
 export function generateLedgerPDF(year, collections, expenses, incomes = []) {
-  const doc = new jsPDF('landscape')
+  const doc    = new jsPDF('landscape')
   const startY = addHeader(doc, `Financial Ledger — Year ${year}`, null, true)
 
-  const allEntries = [
+  const entries = [
     ...(collections || []).map(c => ({
-      date: c.date,
-      type: 'Collection',
-      description: `Friday Collection${c.notes ? ' — ' + c.notes : ''}`,
-      income: Number(c.amount),
-      expense: 0,
+      date: c.date, type: 'Collection',
+      desc: `Friday Collection${c.notes ? ' — ' + c.notes : ''}`,
+      income: Number(c.amount), expense: 0,
     })),
     ...(incomes || []).map(i => ({
-      date: i.date,
-      type: 'Income',
-      description: `${i.category} — ${i.donor_name}`,
-      income: Number(i.amount),
-      expense: 0,
+      date: i.date, type: 'Income',
+      desc: `${i.category} — ${i.donor_name}`,
+      income: Number(i.amount), expense: 0,
     })),
     ...(expenses || []).map(e => ({
-      date: e.date,
-      type: 'Expense',
-      description: `${e.title} (${e.category})`,
-      income: 0,
-      expense: Number(e.amount),
+      date: e.date, type: 'Expense',
+      desc: `${e.title} (${e.category})`,
+      income: 0, expense: Number(e.amount),
     })),
   ].sort((a, b) => new Date(a.date) - new Date(b.date))
 
-  let balance = 0
-  const body = allEntries.map((entry, i) => {
-    balance += entry.income - entry.expense
-    return [
-      i + 1,
-      formatDate(entry.date),
-      entry.type,
-      entry.description,
-      entry.income > 0 ? rupees(entry.income) : '',
-      entry.expense > 0 ? rupees(entry.expense) : '',
-      rupees(balance),
-    ]
+  let bal = 0
+  const body = entries.map((e, i) => {
+    bal += e.income - e.expense
+    return [i + 1, formatDate(e.date), e.type, e.desc,
+      e.income > 0 ? rupees(e.income) : '',
+      e.expense > 0 ? rupees(e.expense) : '',
+      rupees(bal)]
   })
 
-  const totalIncome = allEntries.reduce((s, e) => s + e.income, 0)
-  const totalExpense = allEntries.reduce((s, e) => s + e.expense, 0)
+  const totalIn  = entries.reduce((s, e) => s + e.income,  0)
+  const totalOut = entries.reduce((s, e) => s + e.expense, 0)
 
-  table(doc, {
+  drawTable(doc, {
     startY,
     head: [['#', 'Date', 'Type', 'Description', 'Income', 'Expense', 'Balance']],
     body,
-    foot: [['', '', '', 'TOTALS', rupees(totalIncome), rupees(totalExpense), rupees(totalIncome - totalExpense)]],
+    foot: [['', '', '', 'TOTALS', rupees(totalIn), rupees(totalOut), rupees(totalIn - totalOut)]],
     colStyles: {
       0: { cellWidth: 12 },
       1: { cellWidth: 28 },
@@ -279,28 +280,19 @@ export function generateLedgerPDF(year, collections, expenses, incomes = []) {
   doc.save(`Masjid_Ledger_${year}.pdf`)
 }
 
-// ── 4. Expense Report PDF ────────────────────────────────────
-
+// ════════════════════════════════════════════════════════════
+// 4. EXPENSE REPORT PDF
+// ════════════════════════════════════════════════════════════
 export function generateExpensePDF(year, expenses) {
-  const doc = new jsPDF()
+  const doc    = new jsPDF()
   const startY = addHeader(doc, `Expense Report — Year ${year}`)
+  const total  = expenses.reduce((s, e) => s + Number(e.amount), 0)
 
-  const body = expenses.map((e, i) => [
-    i + 1,
-    formatDate(e.date),
-    e.title,
-    e.category,
-    rupees(e.amount),
-    e.notes || '—',
-  ])
-
-  const total = expenses.reduce((s, e) => s + Number(e.amount), 0)
-
-  table(doc, {
+  drawTable(doc, {
     startY,
     head: [['#', 'Date', 'Title', 'Category', 'Amount', 'Notes']],
-    body,
-    foot: [['', '', '', `Total: ${expenses.length} entries`, rupees(total), '']],
+    body: expenses.map((e, i) => [i + 1, formatDate(e.date), e.title, e.category, rupees(e.amount), e.notes || '—']),
+    foot: [['', '', '', `Total: ${expenses.length}`, rupees(total), '']],
     headColor: RED,
     footColor: LIGHT_RED,
     colStyles: {
@@ -317,29 +309,22 @@ export function generateExpensePDF(year, expenses) {
   doc.save(`Expense_Report_${year}.pdf`)
 }
 
-// ── 5. Income Report PDF ─────────────────────────────────────
-
+// ════════════════════════════════════════════════════════════
+// 5. INCOME REPORT PDF
+// ════════════════════════════════════════════════════════════
 export function generateIncomePDF(year, incomes) {
-  const doc = new jsPDF()
+  const doc    = new jsPDF()
   const startY = addHeader(doc, `Income Report — Year ${year}`)
+  const total  = incomes.reduce((s, i) => s + Number(i.amount), 0)
 
-  const body = incomes.map((inc, i) => [
-    i + 1,
-    formatDate(inc.date),
-    inc.category,
-    inc.donor_name,
-    rupees(inc.amount),
-    inc.payment_mode || '—',
-    inc.notes || '—',
-  ])
-
-  const total = incomes.reduce((s, i) => s + Number(i.amount), 0)
-
-  table(doc, {
+  drawTable(doc, {
     startY,
     head: [['#', 'Date', 'Category', 'Donor', 'Amount', 'Mode', 'Notes']],
-    body,
-    foot: [['', '', '', `Total: ${incomes.length} entries`, rupees(total), '', '']],
+    body: incomes.map((inc, i) => [
+      i + 1, formatDate(inc.date), inc.category, inc.donor_name,
+      rupees(inc.amount), inc.payment_mode || '—', inc.notes || '—',
+    ]),
+    foot: [['', '', '', `Total: ${incomes.length}`, rupees(total), '', '']],
     colStyles: {
       0: { cellWidth: 10 },
       1: { cellWidth: 28 },
