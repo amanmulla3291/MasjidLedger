@@ -24,8 +24,10 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico,woff2}'],
-        navigateFallback: '/index.html',
+        // Only cache static build assets — NOT the HTML shell
+        globPatterns: ['**/*.{js,css,svg,png,ico,woff2}'],
+        // Never cache API calls or auth redirects
+        navigateFallback: null,
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
