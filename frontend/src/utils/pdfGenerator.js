@@ -129,8 +129,9 @@ function addFooter(doc, landscape = false) {
 }
 
 // ── Shared autoTable wrapper ──────────────────────────────────
-function drawTable(doc, { startY, head, body, foot, headColor, footColor, colStyles }) {
-  const font = bodyFont(doc)
+function drawTable(doc, { startY, head, body, foot, headColor, footColor, colStyles, devanagariCol }) {
+  // devanagariCol: column index that contains Devanagari text (e.g. member name)
+  const devFont = bodyFont(doc)
   autoTable(doc, {
     startY,
     head,
@@ -139,10 +140,21 @@ function drawTable(doc, { startY, head, body, foot, headColor, footColor, colSty
     theme: 'striped',
     headStyles:         { fillColor: headColor || GREEN, textColor: 255, fontStyle: 'bold', fontSize: 9 },
     footStyles:         { fillColor: footColor || LIGHT_GREEN, textColor: [0, 0, 0], fontStyle: 'bold', fontSize: 9 },
-    bodyStyles:         { fontSize: 9, cellPadding: 3, font },
+    bodyStyles:         { fontSize: 9, cellPadding: 3, font: 'helvetica' },
     alternateRowStyles: { fillColor: [250, 255, 250] },
     columnStyles:       colStyles || {},
     margin:             { left: 14, right: 14 },
+    didParseCell(data) {
+      // Apply Devanagari font only to the specified column in body rows
+      if (
+        devanagariCol !== undefined &&
+        data.column.index === devanagariCol &&
+        data.section === 'body' &&
+        devFont !== 'helvetica'
+      ) {
+        data.cell.styles.font = devFont
+      }
+    },
   })
   return doc.lastAutoTable.finalY
 }
@@ -195,6 +207,7 @@ export async function generateRamzanPDF(ramzanYear, contributions) {
     head:   [['#', 'Member Name', 'Date', 'Amount', 'Mode', 'Status', 'Notes']],
     body,
     foot:   [['', `Members: ${contributions.length}`, '', rupees(totalPaid + totalPending), '', '', '']],
+    devanagariCol: 1,
     colStyles: {
       0: { cellWidth: 10 },
       1: { cellWidth: 48 },
