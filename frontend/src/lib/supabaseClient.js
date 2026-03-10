@@ -412,84 +412,110 @@ export async function deleteRamzanExpense(id) {
 // DASHBOARD STATS
 // ============================================================
 
+// ============================================================
+// DASHBOARD STATS — patched into supabaseClient.js
+// Replace the existing getDashboardStats function with this.
+// ============================================================
 export async function getDashboardStats() {
   const now = new Date()
   const month = now.getMonth() + 1
   const year = now.getFullYear()
+  const monthPad = String(month).padStart(2, '0')
 
-  const [collections, expenses, ramzanYears, allCollections, allExpenses, allIncome] = await Promise.all([
-    supabase
-      .from('collections')
-      .select('amount')
-      .eq('month', month)
-      .eq('year', year),
-    supabase
-      .from('expenses')
-      .select('amount')
-      .gte('date', `${year}-${String(month).padStart(2, '0')}-01`)
-      .lte('date', `${year}-${String(month).padStart(2, '0')}-31`),
-    supabase
-      .from('ramzan_year')
-      .select('id, year')
-      .eq('year', year)
-      .single(),
-    supabase
-      .from('collections')
-      .select('amount'),
-    supabase
-      .from('expenses')
-      .select('amount'),
-    supabase
-      .from('income')
-      .select('amount'),
+  const [
+    collectionsMonth,
+    expensesMonth,
+    incomeMonth,
+    ramzanYearResult,
+    allCollections,
+    allExpenses,
+    allIncome,
+    monthlyCollections,
+    monthlyExpenses,
+    monthlyIncome,
+    expenseCategories,
+    incomeCategories,        // ← NEW
+  ] = await Promise.all([
+    supabase.from('collections').select('amount').eq('month', month).eq('year', year),
+    supabase.from('expenses').select('amount').gte('date', `${year}-${monthPad}-01`).lte('date', `${year}-${monthPad}-31`),
+    supabase.from('income').select('amount').gte('date', `${year}-${monthPad}-01`).lte('date', `${year}-${monthPad}-31`),
+    supabase.from('ramzan_year').select('id, year, expected_salary').eq('year', year).maybeSingle(),
+    supabase.from('collections').select('amount'),
+    supabase.from('expenses').select('amount'),
+    supabase.from('income').select('amount'),
+    supabase.from('collections').select('month, amount').eq('year', year),
+    supabase.from('expenses').select('date, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
+    supabase.from('income').select('date, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
+    supabase.from('expenses').select('category, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
+    supabase.from('income').select('category, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),  // ← NEW
   ])
 
-  const totalCollection = collections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
-  const totalExpenses = expenses.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
-
-  const allTimeCollection = allCollections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
-  const allTimeExpenses = allExpenses.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
-  const allTimeIncome = allIncome.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
-
-  let ramzanTotal = 0
-  if (ramzanYears.data?.id) {
-    const { data: contribs } = await supabase
-      .from('ramzan_contributions')
-      .select('amount')
-      .eq('ramzan_year_id', ramzanYears.data.id)
-    ramzanTotal = contribs?.reduce((s, r) => s + Number(r.amount), 0) || 0
-  }
-
-  // Monthly chart data (current year)
-  const { data: monthlyData } = await supabase
-    .from('collections')
-    .select('month, amount')
-    .eq('year', year)
-
+  // Monthly collections array (12 months)
   const monthlyTotals = Array(12).fill(0)
-  monthlyData?.forEach(r => {
-    monthlyTotals[r.month - 1] += Number(r.amount)
+  monthlyCollections.data?.forEach(r => {
+    if (r.month >= 1 && r.month <= 12) monthlyTotals[r.month - 1] += Number(r.amount)
   })
 
-  // Expense categories
-  const { data: expenseData } = await supabase
-    .from('expenses')
-    .select('category, amount')
-    .gte('date', `${year}-01-01`)
-    .lte('date', `${year}-12-31`)
+  // Monthly expenses array
+  const monthlyExpenseTotals = Array(12).fill(0)
+  monthlyExpenses.data?.forEach(r => {
+    const m = new Date(r.date).getMonth()
+    monthlyExpenseTotals[m] += Number(r.amount)
+  })
 
+  // Monthly other income array
+  const monthlyIncomeTotals = Array(12).fill(0)
+  monthlyIncome.data?.forEach(r => {
+    const m = new Date(r.date).getMonth()
+    monthlyIncomeTotals[m] += Number(r.amount)
+  })
+
+  // Expense category breakdown
   const categoryTotals = {}
-  expenseData?.forEach(r => {
+  expenseCategories.data?.forEach(r => {
     categoryTotals[r.category] = (categoryTotals[r.category] || 0) + Number(r.amount)
   })
 
+  // Income category breakdown  ← NEW
+  const incomeCategoryTotals = {}
+  incomeCategories.data?.forEach(r => {
+    incomeCategoryTotals[r.category] = (incomeCategoryTotals[r.category] || 0) + Number(r.amount)
+  })
+
+  // All-time totals
+  const allTimeCollection = allCollections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
+  const allTimeExpenses   = allExpenses.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
+  const allTimeIncome     = allIncome.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
+
+  // Ramzan progress for current year
+  let ramzanTotal = 0
+  let ramzanContribCount = 0
+  let ramzanExpected = 0
+
+  if (ramzanYearResult.data?.id) {
+    ramzanExpected = Number(ramzanYearResult.data.expected_salary) || 0
+    const { data: contribs } = await supabase
+      .from('ramzan_contributions')
+      .select('amount')
+      .eq('ramzan_year_id', ramzanYearResult.data.id)
+      .eq('payment_status', 'paid')
+    ramzanTotal = contribs?.reduce((s, r) => s + Number(r.amount), 0) || 0
+    ramzanContribCount = contribs?.length || 0
+  }
+
   return {
-    totalCollection,
-    totalExpenses,
-    allTimeBalance: allTimeCollection + allTimeIncome - allTimeExpenses,
+    totalCollection:      collectionsMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
+    totalExpenses:        expensesMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
+    totalMonthIncome:     incomeMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
+    allTimeBalance:       allTimeCollection + allTimeIncome - allTimeExpenses,
     ramzanTotal,
+    ramzanContribCount,
+    ramzanExpected,
     monthlyTotals,
+    monthlyExpenseTotals,
+    monthlyIncomeTotals,
     categoryTotals,
+    incomeCategoryTotals,   // ← NEW
   }
 }
 
