@@ -16,8 +16,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 // ============================================================
 // SAFE QUERY HELPER
-// Detects silent RLS blocks (empty data for authenticated user)
-// and logs a clear warning in the browser console.
 // ============================================================
 export async function safeQuery(query, tableName = '') {
   const { data, error } = await query
@@ -31,7 +29,6 @@ export async function safeQuery(query, tableName = '') {
   return { data, error: null }
 }
 
-
 // ============================================================
 // USER ROLES & ACCESS CONTROL
 // ============================================================
@@ -42,7 +39,6 @@ export const WHITELISTED_USERS = [
   { email: 'pjilani4566@gmail.com', role: 'viewer' },
 ]
 
-// Keep legacy export for any existing imports
 export const WHITELISTED_EMAILS = WHITELISTED_USERS.map(u => u.email)
 
 export function isWhitelisted(email) {
@@ -412,10 +408,6 @@ export async function deleteRamzanExpense(id) {
 // DASHBOARD STATS
 // ============================================================
 
-// ============================================================
-// DASHBOARD STATS — patched into supabaseClient.js
-// Replace the existing getDashboardStats function with this.
-// ============================================================
 export async function getDashboardStats() {
   const now = new Date()
   const month = now.getMonth() + 1
@@ -434,7 +426,7 @@ export async function getDashboardStats() {
     monthlyExpenses,
     monthlyIncome,
     expenseCategories,
-    incomeCategories,        // ← NEW
+    incomeCategories,
   ] = await Promise.all([
     supabase.from('collections').select('amount').eq('month', month).eq('year', year),
     supabase.from('expenses').select('amount').gte('date', `${year}-${monthPad}-01`).lte('date', `${year}-${monthPad}-31`),
@@ -447,47 +439,40 @@ export async function getDashboardStats() {
     supabase.from('expenses').select('date, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
     supabase.from('income').select('date, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
     supabase.from('expenses').select('category, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
-    supabase.from('income').select('category, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),  // ← NEW
+    supabase.from('income').select('category, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
   ])
 
-  // Monthly collections array (12 months)
   const monthlyTotals = Array(12).fill(0)
   monthlyCollections.data?.forEach(r => {
     if (r.month >= 1 && r.month <= 12) monthlyTotals[r.month - 1] += Number(r.amount)
   })
 
-  // Monthly expenses array
   const monthlyExpenseTotals = Array(12).fill(0)
   monthlyExpenses.data?.forEach(r => {
     const m = new Date(r.date).getMonth()
     monthlyExpenseTotals[m] += Number(r.amount)
   })
 
-  // Monthly other income array
   const monthlyIncomeTotals = Array(12).fill(0)
   monthlyIncome.data?.forEach(r => {
     const m = new Date(r.date).getMonth()
     monthlyIncomeTotals[m] += Number(r.amount)
   })
 
-  // Expense category breakdown
   const categoryTotals = {}
   expenseCategories.data?.forEach(r => {
     categoryTotals[r.category] = (categoryTotals[r.category] || 0) + Number(r.amount)
   })
 
-  // Income category breakdown  ← NEW
   const incomeCategoryTotals = {}
   incomeCategories.data?.forEach(r => {
     incomeCategoryTotals[r.category] = (incomeCategoryTotals[r.category] || 0) + Number(r.amount)
   })
 
-  // All-time totals
   const allTimeCollection = allCollections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
   const allTimeExpenses   = allExpenses.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
   const allTimeIncome     = allIncome.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
 
-  // Ramzan progress for current year
   let ramzanTotal = 0
   let ramzanContribCount = 0
   let ramzanExpected = 0
@@ -515,8 +500,36 @@ export async function getDashboardStats() {
     monthlyExpenseTotals,
     monthlyIncomeTotals,
     categoryTotals,
-    incomeCategoryTotals,   // ← NEW
+    incomeCategoryTotals,
   }
+}
+
+// ============================================================
+// AUDIT LOG
+// ============================================================
+
+export async function logAudit(supabaseClient, { action, table_name, record_id = null, description, performed_by }) {
+  try {
+    await supabaseClient
+      .from('audit_log')
+      .insert({ action, table_name, record_id, description, performed_by })
+  } catch {
+    // Audit log failure should never break the main action
+  }
+}
+
+export async function getAuditLog({ limit = 100, tableName = null, performedBy = null } = {}) {
+  let query = supabase
+    .from('audit_log')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (tableName) query = query.eq('table_name', tableName)
+  if (performedBy) query = query.eq('performed_by', performedBy)
+
+  const { data, error } = await query
+  return { data, error }
 }
 
 // ============================================================
@@ -528,22 +541,18 @@ export async function uploadFile(bucket, file, path) {
     .from(bucket)
     .upload(path, file, { upsert: true })
 
-  if (error) return { url: null, error }
+  if (error) return { url: null, publicUrl: null, error }
 
   const { data: { publicUrl } } = supabase.storage
     .from(bucket)
     .getPublicUrl(path)
 
-  const { data: signedData } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, 60 * 60 * 24 * 365) // 1 year
-
-  return { url: data.path, signedUrl: signedData?.signedUrl, error: null }
+  return { url: data.path, publicUrl, error: null }
 }
 
 export async function getSignedUrl(bucket, path) {
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUrl(path, 60 * 60) // 1 hour
+    .createSignedUrl(path, 60 * 60)
   return { url: data?.signedUrl, error }
 }
