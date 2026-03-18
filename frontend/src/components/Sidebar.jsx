@@ -1,3 +1,4 @@
+import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { signOut } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
@@ -95,7 +96,7 @@ export default function Sidebar() {
             {NAV.map(section => {
               if (section.adminOnly && !isAdmin) return null
               return (
-                <li key={section.header}>
+                <React.Fragment key={section.header}>
                   <li className="nav-header" style={{ fontSize: '0.65rem', opacity: 0.5, padding: '8px 16px 4px', letterSpacing: '0.08em' }}>
                     {section.header.toUpperCase()}
                   </li>
@@ -112,7 +113,7 @@ export default function Sidebar() {
                       </NavLink>
                     </li>
                   ))}
-                </li>
+                </React.Fragment>
               )
             })}
 

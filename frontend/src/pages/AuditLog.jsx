@@ -165,7 +165,7 @@ export default function AuditLog() {
                     return (
                       <tr key={log.id}>
                         <td style={{ fontSize: '0.8rem', color: '#6b7280', whiteSpace: 'nowrap' }}>
-                          {formatLogTime(log.performed_at)}
+                          {formatLogTime(log.created_at)}
                         </td>
                         <td>
                           <span className={`badge ${actionStyle.badge}`} style={{ fontSize: '0.72rem' }}>

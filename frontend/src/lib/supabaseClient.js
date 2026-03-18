@@ -31,6 +31,9 @@ export async function safeQuery(query, tableName = '') {
 
 // ============================================================
 // USER ROLES & ACCESS CONTROL
+//
+// To add a new viewer: add their email here AND update all 9
+// RLS policies in Supabase. See QUICK_REFERENCE.md for steps.
 // ============================================================
 
 export const WHITELISTED_USERS = [
@@ -39,6 +42,7 @@ export const WHITELISTED_USERS = [
   { email: 'pjilani4566@gmail.com', role: 'viewer' },
 ]
 
+// Legacy export — kept so any existing imports don't break
 export const WHITELISTED_EMAILS = WHITELISTED_USERS.map(u => u.email)
 
 export function isWhitelisted(email) {
@@ -426,7 +430,6 @@ export async function getDashboardStats() {
     monthlyExpenses,
     monthlyIncome,
     expenseCategories,
-    incomeCategories,
   ] = await Promise.all([
     supabase.from('collections').select('amount').eq('month', month).eq('year', year),
     supabase.from('expenses').select('amount').gte('date', `${year}-${monthPad}-01`).lte('date', `${year}-${monthPad}-31`),
@@ -439,40 +442,40 @@ export async function getDashboardStats() {
     supabase.from('expenses').select('date, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
     supabase.from('income').select('date, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
     supabase.from('expenses').select('category, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
-    supabase.from('income').select('category, amount').gte('date', `${year}-01-01`).lte('date', `${year}-12-31`),
   ])
 
+  // Monthly collections array (12 months)
   const monthlyTotals = Array(12).fill(0)
   monthlyCollections.data?.forEach(r => {
     if (r.month >= 1 && r.month <= 12) monthlyTotals[r.month - 1] += Number(r.amount)
   })
 
+  // Monthly expenses array
   const monthlyExpenseTotals = Array(12).fill(0)
   monthlyExpenses.data?.forEach(r => {
     const m = new Date(r.date).getMonth()
     monthlyExpenseTotals[m] += Number(r.amount)
   })
 
+  // Monthly other income array
   const monthlyIncomeTotals = Array(12).fill(0)
   monthlyIncome.data?.forEach(r => {
     const m = new Date(r.date).getMonth()
     monthlyIncomeTotals[m] += Number(r.amount)
   })
 
+  // Expense category breakdown
   const categoryTotals = {}
   expenseCategories.data?.forEach(r => {
     categoryTotals[r.category] = (categoryTotals[r.category] || 0) + Number(r.amount)
   })
 
-  const incomeCategoryTotals = {}
-  incomeCategories.data?.forEach(r => {
-    incomeCategoryTotals[r.category] = (incomeCategoryTotals[r.category] || 0) + Number(r.amount)
-  })
-
+  // All-time totals
   const allTimeCollection = allCollections.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
   const allTimeExpenses   = allExpenses.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
   const allTimeIncome     = allIncome.data?.reduce((s, r) => s + Number(r.amount), 0) || 0
 
+  // Ramzan progress for current year
   let ramzanTotal = 0
   let ramzanContribCount = 0
   let ramzanExpected = 0
@@ -489,10 +492,10 @@ export async function getDashboardStats() {
   }
 
   return {
-    totalCollection:      collectionsMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
-    totalExpenses:        expensesMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
-    totalMonthIncome:     incomeMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
-    allTimeBalance:       allTimeCollection + allTimeIncome - allTimeExpenses,
+    totalCollection:    collectionsMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
+    totalExpenses:      expensesMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
+    totalMonthIncome:   incomeMonth.data?.reduce((s, r) => s + Number(r.amount), 0) || 0,
+    allTimeBalance:     allTimeCollection + allTimeIncome - allTimeExpenses,
     ramzanTotal,
     ramzanContribCount,
     ramzanExpected,
@@ -500,21 +503,24 @@ export async function getDashboardStats() {
     monthlyExpenseTotals,
     monthlyIncomeTotals,
     categoryTotals,
-    incomeCategoryTotals,
   }
 }
 
 // ============================================================
-// AUDIT LOG
+// AUDIT LOG HELPERS
 // ============================================================
 
 export async function logAudit(supabaseClient, { action, table_name, record_id = null, description, performed_by }) {
   try {
-    await supabaseClient
-      .from('audit_log')
-      .insert({ action, table_name, record_id, description, performed_by })
+    await supabaseClient.from('audit_log').insert({
+      action,
+      table_name,
+      record_id,
+      description,
+      performed_by,
+    })
   } catch {
-    // Audit log failure should never break the main action
+    console.warn('[Audit] Failed to write audit log entry')
   }
 }
 
@@ -541,18 +547,22 @@ export async function uploadFile(bucket, file, path) {
     .from(bucket)
     .upload(path, file, { upsert: true })
 
-  if (error) return { url: null, publicUrl: null, error }
+  if (error) return { url: null, error }
 
   const { data: { publicUrl } } = supabase.storage
     .from(bucket)
     .getPublicUrl(path)
 
-  return { url: data.path, publicUrl, error: null }
+  const { data: signedData } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, 60 * 60 * 24 * 365) // 1 year
+
+  return { url: data.path, publicUrl, signedUrl: signedData?.signedUrl, error: null }
 }
 
 export async function getSignedUrl(bucket, path) {
   const { data, error } = await supabase.storage
     .from(bucket)
-    .createSignedUrl(path, 60 * 60)
+    .createSignedUrl(path, 60 * 60) // 1 hour
   return { url: data?.signedUrl, error }
 }
