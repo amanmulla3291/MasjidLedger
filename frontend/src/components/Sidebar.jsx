@@ -1,4 +1,3 @@
-import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import { signOut } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
@@ -23,8 +22,8 @@ const NAV = [
   {
     header: 'Ramzan',
     items: [
-      { to: '/jamat-members', icon: 'fa-users',  label: 'Jamat Members' },
-      { to: '/ramzan',        icon: 'fa-moon',   label: 'Ramzan Management' },
+      { to: '/jamat-members', icon: 'fa-users', label: 'Jamat Members' },
+      { to: '/ramzan',        icon: 'fa-moon',  label: 'Ramzan Management' },
     ],
   },
   {
@@ -93,32 +92,29 @@ export default function Sidebar() {
       <div className="sidebar">
         <nav className="mt-2">
           <ul className="nav nav-pills nav-sidebar flex-column nav-compact" data-widget="treeview" role="menu">
-            {NAV.map(section => {
-              if (section.adminOnly && !isAdmin) return null
-              return (
-                <React.Fragment key={section.header}>
-                  <li className="nav-header" style={{ fontSize: '0.65rem', opacity: 0.5, padding: '8px 16px 4px', letterSpacing: '0.08em' }}>
-                    {section.header.toUpperCase()}
-                  </li>
+            {NAV.filter(section => !section.adminOnly || isAdmin).map(section => (
+              <li key={section.header} className="nav-item">
+                <p className="nav-header" style={{ fontSize: '0.65rem', opacity: 0.5, padding: '8px 16px 4px', letterSpacing: '0.08em', margin: 0 }}>
+                  {section.header.toUpperCase()}
+                </p>
+                <ul className="nav nav-treeview" style={{ padding: 0 }}>
                   {section.items.map(item => (
                     <li className="nav-item" key={item.to}>
                       <NavLink
                         to={item.to}
-                        className={({ isActive }) =>
-                          `nav-link${isActive ? ' active' : ''}`
-                        }
+                        className={({ isActive }) => `nav-link${isActive ? ' active' : ''}`}
                       >
                         <i className={`nav-icon fas ${item.icon}`} />
                         <p>{item.label}</p>
                       </NavLink>
                     </li>
                   ))}
-                </React.Fragment>
-              )
-            })}
+                </ul>
+              </li>
+            ))}
 
             {/* Sign out */}
-            <li className="nav-item mt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '8px' }}>
+            <li className="nav-item" style={{ borderTop: '1px solid rgba(255,255,255,0.08)', marginTop: '8px', paddingTop: '8px' }}>
               <button
                 className="nav-link w-100 text-left"
                 style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.6)' }}
