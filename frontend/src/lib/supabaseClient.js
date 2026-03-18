@@ -528,7 +528,7 @@ export async function getAuditLog({ limit = 100, tableName = null, performedBy =
   let query = supabase
     .from('audit_log')
     .select('*')
-    .order('created_at', { ascending: false })
+    .order('performed_at', { ascending: false })
     .limit(limit)
 
   if (tableName) query = query.eq('table_name', tableName)
