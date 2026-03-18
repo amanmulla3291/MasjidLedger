@@ -68,53 +68,8 @@ export async function generateRamzanPDF(ramzanYear, contributions) {
   doc.text('Ramzan Contribution Report', pageW / 2, 18, { align: 'center' })
   doc.text(`Ramzan ${ramzanYear.year}  ·  Hafiz: ${ramzanYear.hafiz_name}`, pageW / 2, 24, { align: 'center' })
 
-  // ── Summary cards row ─────────────────────────────────────
-  const cardY = 34
-  const cardH = 22
-  const cards = [
-    { label: 'Members',        value: String(contributions.length),  sub: `${paid.length} paid · ${pending.length} pending` },
-    { label: 'Total Collected', value: rs(totalPaid),                sub: pending.length > 0 ? `+ ${rs(totalPending)} pending` : 'All settled' },
-    { label: 'Salary Target',  value: rs(expected),                  sub: '' },
-    { label: 'Balance',        value: rs(Math.abs(balance)),         sub: balance >= 0 ? 'Surplus' : 'Deficit', red: balance < 0 },
-  ]
-
-  const cardW = (pageW - 28 - 9) / 4  // 4 cards with gaps
-  cards.forEach((card, i) => {
-    const x = 14 + i * (cardW + 3)
-
-    // Card bg
-    doc.setFillColor(...GREEN_PALE)
-    doc.setDrawColor(...GRAY_LIGHT)
-    doc.setLineWidth(0.3)
-    doc.roundedRect(x, cardY, cardW, cardH, 2, 2, 'FD')
-
-    // Left accent bar
-    doc.setFillColor(...GREEN)
-    doc.rect(x, cardY, 2, cardH, 'F')
-
-    // Label
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7)
-    doc.setTextColor(...GRAY_MID)
-    doc.text(card.label.toUpperCase(), x + 5, cardY + 6)
-
-    // Value
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9.5)
-    doc.setTextColor(card.red ? 180 : GRAY_DARK[0], card.red ? 30 : GRAY_DARK[1], card.red ? 30 : GRAY_DARK[2])
-    doc.text(card.value, x + 5, cardY + 13)
-
-    // Sub
-    if (card.sub) {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(6.5)
-      doc.setTextColor(...GRAY_MID)
-      doc.text(card.sub, x + 5, cardY + 19)
-    }
-  })
-
   // ── Section title ─────────────────────────────────────────
-  let y = cardY + cardH + 10
+  let y = 34
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(9)
   doc.setTextColor(...GREEN)
