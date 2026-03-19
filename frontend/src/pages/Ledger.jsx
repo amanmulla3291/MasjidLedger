@@ -17,6 +17,8 @@ const TYPE_FILTERS = [
 
 const badgeClass = { collection: 'badge-success', income: 'badge-info', expense: 'badge-danger' }
 
+const CACHE_KEY = 'masjid_ledger_cache'
+
 export default function Ledger() {
   const [collections, setCollections] = useState([])
   const [expenses, setExpenses]       = useState([])
@@ -30,18 +32,38 @@ export default function Ledger() {
   const [groupByMonth, setGroupByMonth] = useState(true)
 
   async function load() {
-    setLoading(true)
+    // 1. Load instantly from cache
+    try {
+      const cached = localStorage.getItem(`${CACHE_KEY}_${selectedYear}`)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        setCollections(parsed.collections || [])
+        setExpenses(parsed.expenses || [])
+        setIncomes(parsed.incomes || [])
+        setLoading(false)
+      }
+    } catch { /* ignore */ }
+
+    // 2. Fetch fresh data in background
+    if (!loading && (!collections.length && !expenses.length && !incomes.length)) setLoading(true)
+
     try {
       const [colResult, expResult, incResult] = await Promise.all([
         getCollections(selectedYear),
         getExpenses(selectedYear),
         getIncome(selectedYear),
       ])
-      if (!colResult.error) setCollections(colResult.data || [])
+      
+      const newData = { collections: [], expenses: [], incomes: [] }
+      if (!colResult.error) { setCollections(colResult.data || []); newData.collections = colResult.data || [] }
       else toast.error('Failed to load collections')
-      if (!expResult.error) setExpenses(expResult.data || [])
+      
+      if (!expResult.error) { setExpenses(expResult.data || []); newData.expenses = expResult.data || [] }
       else toast.error('Failed to load expenses')
-      if (!incResult.error) setIncomes(incResult.data || [])
+      
+      if (!incResult.error) { setIncomes(incResult.data || []); newData.incomes = incResult.data || [] }
+      
+      try { localStorage.setItem(`${CACHE_KEY}_${selectedYear}`, JSON.stringify(newData)) } catch {}
     } catch {
       toast.error('Failed to load ledger data. Please refresh.')
     } finally {

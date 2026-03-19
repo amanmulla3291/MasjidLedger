@@ -20,6 +20,8 @@ const DEFAULT_FORM = {
   notes: '',
 }
 
+const CACHE_KEY = 'masjid_income_cache'
+
 export default function Income() {
   const { user, role } = useAuth()
   const isAdmin = role === 'admin'
@@ -33,11 +35,26 @@ export default function Income() {
   const [filterCategory, setFilterCategory] = useState('all')
 
   async function load() {
-    setLoading(true)
+    // 1. Load instantly from cache
+    try {
+      const cached = localStorage.getItem(`${CACHE_KEY}_${selectedYear}`)
+      if (cached) {
+        setIncomes(JSON.parse(cached))
+        setLoading(false)
+      }
+    } catch { /* ignore */ }
+
+    // 2. Fetch fresh data in background
+    if (!loading && incomes.length === 0) setLoading(true)
+    
     try {
       const { data, error } = await getIncome(selectedYear)
-      if (!error) setIncomes(data || [])
-      else toast.error('Failed to load income records')
+      if (!error) {
+        setIncomes(data || [])
+        try { localStorage.setItem(`${CACHE_KEY}_${selectedYear}`, JSON.stringify(data || [])) } catch {}
+      } else {
+        toast.error('Failed to load income records')
+      }
     } catch {
       toast.error('Failed to load income. Please refresh.')
     } finally {

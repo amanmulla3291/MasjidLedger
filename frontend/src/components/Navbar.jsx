@@ -15,6 +15,21 @@ export default function Navbar() {
     }
   }
 
+  function toggleSidebar(e) {
+    e.preventDefault()
+    if (window.innerWidth <= 991) {
+      if (document.body.classList.contains('sidebar-open')) {
+        document.body.classList.remove('sidebar-open')
+        document.body.classList.add('sidebar-collapse')
+      } else {
+        document.body.classList.add('sidebar-open')
+        document.body.classList.remove('sidebar-collapse')
+      }
+    } else {
+      document.body.classList.toggle('sidebar-collapse')
+    }
+  }
+
   const name = user?.user_metadata?.full_name || user?.email || 'Admin'
   const avatar = user?.user_metadata?.avatar_url
 
@@ -23,7 +38,7 @@ export default function Navbar() {
       {/* Left side */}
       <ul className="navbar-nav">
         <li className="nav-item">
-          <a className="nav-link" data-widget="pushmenu" href="#" role="button">
+          <a className="nav-link" href="#" role="button" onClick={toggleSidebar}>
             <i className="fas fa-bars" />
           </a>
         </li>

@@ -16,6 +16,8 @@ const DEFAULT_FORM = {
   notes: '',
 }
 
+const CACHE_KEY = 'masjid_collections_cache'
+
 export default function Collections() {
   const { user, role } = useAuth()
   const isAdmin = role === 'admin'
@@ -29,9 +31,23 @@ export default function Collections() {
   const [selectedYear, setSelectedYear] = useState(getCurrentYear())
 
   async function load() {
-    setLoading(true)
+    // 1. Load instantly from cache
+    try {
+      const cached = localStorage.getItem(`${CACHE_KEY}_${selectedYear}`)
+      if (cached) {
+        setCollections(JSON.parse(cached))
+        setLoading(false)
+      }
+    } catch { /* ignore */ }
+
+    // 2. Fetch fresh data in background
+    if (!loading && collections.length === 0) setLoading(true)
+
     const { data, error } = await getCollections(selectedYear)
-    if (!error) setCollections(data || [])
+    if (!error) {
+      setCollections(data || [])
+      try { localStorage.setItem(`${CACHE_KEY}_${selectedYear}`, JSON.stringify(data || [])) } catch {}
+    }
     setLoading(false)
   }
 

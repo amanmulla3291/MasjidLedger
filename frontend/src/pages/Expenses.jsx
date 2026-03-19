@@ -20,6 +20,8 @@ const DEFAULT_FORM = {
   notes: '',
 }
 
+const CACHE_KEY = 'masjid_expenses_cache'
+
 export default function Expenses() {
   const { user, role } = useAuth()
   const isAdmin = role === 'admin'
@@ -36,10 +38,24 @@ export default function Expenses() {
   const [filterCategory, setFilterCategory] = useState('all')
 
   async function load() {
-    setLoading(true)
+    // 1. Load instantly from cache
+    try {
+      const cached = localStorage.getItem(`${CACHE_KEY}_${selectedYear}`)
+      if (cached) {
+        setExpenses(JSON.parse(cached))
+        setLoading(false)
+      }
+    } catch { /* ignore */ }
+
+    // 2. Fetch fresh data in background
+    if (!loading && expenses.length === 0) setLoading(true)
+
     try {
       const { data, error } = await getExpenses(selectedYear)
-      if (!error) setExpenses(data || [])
+      if (!error) {
+        setExpenses(data || [])
+        try { localStorage.setItem(`${CACHE_KEY}_${selectedYear}`, JSON.stringify(data || [])) } catch {}
+      }
     } catch {
       toast.error('Failed to load expenses. Please refresh.')
     } finally {

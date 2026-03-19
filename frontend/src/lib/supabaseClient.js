@@ -103,8 +103,14 @@ export async function signInWithGoogle() {
 }
 
 export async function signOut() {
-  try { localStorage.removeItem('masjid_session') } catch {}
-  try { localStorage.removeItem('masjid_dashboard_cache') } catch {}
+  try {
+    const keysToRemove = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('masjid_')) keysToRemove.push(key)
+    }
+    keysToRemove.forEach(k => localStorage.removeItem(k))
+  } catch {}
   const { error } = await supabase.auth.signOut()
   return { error }
 }

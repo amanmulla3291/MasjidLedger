@@ -18,6 +18,13 @@
 body {
   font-family: var(--font-body) !important;
   background-color: #f0f2f5;
+  height: 100%;
+}
+
+html { height: 100%; }
+
+#root {
+  height: 100%;
 }
 
 /* ============================================================
@@ -656,98 +663,7 @@ label {
   -webkit-overflow-scrolling: touch;
 }
 
-/* ============================================================
-   STAT CARDS (replaces AdminLTE info-box on mobile)
-   ============================================================ */
-.stat-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-}
 
-/* 4-column on large screens */
-@media (min-width: 992px) {
-  .stat-cards-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-  .stat-cards-grid.stat-cards-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* 3-column variant stays 3 on tablet+ */
-@media (min-width: 576px) {
-  .stat-cards-grid.stat-cards-3 {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-.stat-card {
-  background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
-  padding: 12px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.stat-card-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 1rem;
-  flex-shrink: 0;
-}
-
-.stat-card-body {
-  min-width: 0;
-  flex: 1;
-}
-
-.stat-card-label {
-  font-size: 0.66rem;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: #6b7280;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 2px;
-}
-
-.stat-card-value {
-  font-size: 1rem;
-  font-weight: 700;
-  color: #111827;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-@media (max-width: 400px) {
-  .stat-card {
-    padding: 10px;
-    gap: 8px;
-  }
-  .stat-card-icon {
-    width: 34px;
-    height: 34px;
-    font-size: 0.85rem;
-  }
-  .stat-card-value {
-    font-size: 0.88rem;
-  }
-  .stat-card-label {
-    font-size: 0.6rem;
-  }
-}
 
 /* Sidebar brand — allow long name to wrap */
 .brand-link .brand-text {

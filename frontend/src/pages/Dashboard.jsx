@@ -33,18 +33,16 @@ function setCachedStats(data) {
   } catch { /* quota exceeded */ }
 }
 
-function StatCard({ icon, iconBg, label, value, valueColor, sub }) {
+function InfoBox({ bg, icon, label, value, valueColor, sub }) {
   return (
-    <div className="stat-card">
-      <div className="stat-card-icon" style={{ background: iconBg }}>
-        <i className={`fas ${icon}`} />
-      </div>
-      <div className="stat-card-body">
-        <div className="stat-card-label">{label}</div>
-        <div className="stat-card-value" style={valueColor ? { color: valueColor } : {}}>
+    <div className="info-box mb-3 elevation-1">
+      <span className={`info-box-icon ${bg}`}><i className={`fas ${icon}`} /></span>
+      <div className="info-box-content">
+        <span className="info-box-text text-uppercase text-muted" style={{ fontSize: '0.75rem', fontWeight: 600 }}>{label}</span>
+        <span className="info-box-number" style={valueColor ? { color: valueColor, fontSize: '1.2rem' } : { fontSize: '1.2rem' }}>
           {value}
-        </div>
-        {sub && <div style={{ fontSize: '0.72rem', color: '#9ca3af', marginTop: '2px' }}>{sub}</div>}
+        </span>
+        {sub && <span className="progress-description text-muted" style={{ fontSize: '0.75rem' }}>{sub}</span>}
       </div>
     </div>
   )
@@ -134,19 +132,27 @@ export default function Dashboard() {
     <div>
       <PageHeader title={`Dashboard — ${year}`} subtitle="Overview of finances and recent activity" icon="fa-tachometer-alt" />
 
-      {/* Stat cards */}
-      <div className="stat-cards-grid mb-3">
-        <StatCard icon="fa-hand-holding-usd" iconBg="#1a5c2a" label="Collections This Month" value={formatCurrency(stats?.totalCollection)} sub="Friday Sadaqah" />
-        <StatCard icon="fa-money-bill-wave" iconBg="#15803d" label="Other Income This Month" value={formatCurrency(stats?.totalMonthIncome || 0)} sub="Zakat, Donations etc." />
-        <StatCard icon="fa-file-invoice-dollar" iconBg="#b71c1c" label="Expenses This Month" value={formatCurrency(stats?.totalExpenses)} sub="Repairs, Utilities etc." />
-        <StatCard
-          icon="fa-balance-scale"
-          iconBg={balance >= 0 ? '#1565c0' : '#e65100'}
-          label="All-Time Balance"
-          value={formatCurrency(balance)}
-          valueColor={balance >= 0 ? '#15803d' : '#b91c1c'}
-          sub={balance >= 0 ? 'Surplus' : 'Deficit'}
-        />
+      {/* Stat cards (AdminLTE Native) */}
+      <div className="row">
+        <div className="col-12 col-sm-6 col-md-3">
+          <InfoBox icon="fa-hand-holding-usd" bg="bg-success" label="Collections This Month" value={formatCurrency(stats?.totalCollection)} sub="Friday Sadaqah" />
+        </div>
+        <div className="col-12 col-sm-6 col-md-3">
+          <InfoBox icon="fa-money-bill-wave" bg="bg-info" label="Other Income This Month" value={formatCurrency(stats?.totalMonthIncome || 0)} sub="Zakat, Donations etc." />
+        </div>
+        <div className="col-12 col-sm-6 col-md-3">
+          <InfoBox icon="fa-file-invoice-dollar" bg="bg-danger" label="Expenses This Month" value={formatCurrency(stats?.totalExpenses)} sub="Repairs, Utilities etc." />
+        </div>
+        <div className="col-12 col-sm-6 col-md-3">
+          <InfoBox
+            icon="fa-balance-scale"
+            bg={balance >= 0 ? 'bg-primary' : 'bg-warning'}
+            label="All-Time Balance"
+            value={formatCurrency(balance)}
+            valueColor={balance >= 0 ? '#15803d' : '#b91c1c'}
+            sub={balance >= 0 ? 'Surplus' : 'Deficit'}
+          />
+        </div>
       </div>
 
       {/* Month net banner */}
