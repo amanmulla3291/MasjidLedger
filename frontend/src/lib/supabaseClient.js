@@ -91,12 +91,14 @@ export const PAYMENT_MODES = [
 // ============================================================
 
 export async function signInWithGoogle() {
+  console.log('[SignIn] Calling signInWithOAuth, redirectTo:', window.location.origin)
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
       redirectTo: window.location.origin,
     },
   })
+  console.log('[SignIn] OAuth result:', { url: data?.url, error: error?.message })
   return { data, error }
 }
 

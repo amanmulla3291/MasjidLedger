@@ -33,6 +33,9 @@ export function clearCachedSession() {
 export function AuthProvider({ children }) {
   // Restore cached session instantly so the UI never flashes a loader
   const cached = getCachedSession()
+  console.log('[Auth] Init — cached session:', cached ? 'yes' : 'no')
+  console.log('[Auth] Current URL:', window.location.href)
+  console.log('[Auth] Hash:', window.location.hash)
   const [user, setUser] = useState(cached?.user || null)
   const [role, setRole] = useState(cached?.role || null)
   const [loading, setLoading] = useState(!cached) // skip loading if cache exists
@@ -45,6 +48,7 @@ export function AuthProvider({ children }) {
 
     // Proactively check session on mount (fixes PWA reopen freeze)
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('[Auth] getSession result:', session ? 'session found' : 'no session', session?.user?.email)
       if (didInit.current) return
       didInit.current = true
       clearTimeout(hardTimeout)
@@ -52,14 +56,19 @@ export function AuthProvider({ children }) {
         handleUser(session.user)
       } else {
         // No valid session — clear stale cache
+        console.log('[Auth] No session — clearing cache')
         clearCachedSession()
         setUser(null)
         setRole(null)
         setLoading(false)
       }
+    }).catch(err => {
+      console.error('[Auth] getSession error:', err)
+      setLoading(false)
     })
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] onAuthStateChange:', event, session?.user?.email || 'no user')
       if (event === 'INITIAL_SESSION') {
         if (didInit.current) return
         didInit.current = true
@@ -99,7 +108,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   async function handleUser(authUser) {
-    if (handlingUser.current) return
+    console.log('[Auth] handleUser called for:', authUser.email)
+    if (handlingUser.current) {
+      console.log('[Auth] handleUser already running — skipping')
+      return
+    }
     handlingUser.current = true
 
     try {
@@ -107,6 +120,7 @@ export function AuthProvider({ children }) {
 
       // Always allow primary admins (bootstrap safety net)
       if (PRIMARY_ADMINS.includes(email)) {
+        console.log('[Auth] Primary admin detected:', email)
         setUser(authUser)
         setRole('admin')
         setCachedSession(authUser, 'admin')
@@ -123,7 +137,7 @@ export function AuthProvider({ children }) {
         .single()
 
       if (error || !data) {
-        // Not in database = no access
+        console.error('[Auth] DB lookup failed:', error?.message, 'data:', data)
         toast.error('Access denied. Ask an admin to add your email in User Management.')
         await signOut()
         clearCachedSession()
@@ -134,6 +148,7 @@ export function AuthProvider({ children }) {
       }
 
       // User exists in DB — grant access with their role
+      console.log('[Auth] DB lookup success — role:', data.role)
       setUser(authUser)
       setRole(data.role)
       setCachedSession(authUser, data.role)

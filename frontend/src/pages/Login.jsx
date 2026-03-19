@@ -6,13 +6,25 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
 
   async function handleGoogleLogin() {
+    console.log('[Login] Button clicked — starting Google OAuth...')
+    console.log('[Login] Current URL:', window.location.href)
+    console.log('[Login] Origin:', window.location.origin)
     setLoading(true)
-    const { error } = await signInWithGoogle()
-    if (error) {
-      toast.error('Login failed: ' + error.message)
+    try {
+      const { data, error } = await signInWithGoogle()
+      console.log('[Login] signInWithGoogle response:', { data, error })
+      if (error) {
+        console.error('[Login] OAuth error:', error)
+        toast.error('Login failed: ' + error.message)
+        setLoading(false)
+      } else {
+        console.log('[Login] OAuth redirect initiated, URL:', data?.url)
+      }
+    } catch (err) {
+      console.error('[Login] Unexpected error:', err)
+      toast.error('Login failed: ' + err.message)
       setLoading(false)
     }
-    // On success, OAuth redirect happens automatically
   }
 
   return (
