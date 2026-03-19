@@ -4,13 +4,38 @@ import toast from 'react-hot-toast'
 
 const AuthContext = createContext(null)
 
+const SESSION_KEY = 'masjid_session'
+
 // Primary admins — always have access even if DB is unreachable
 const PRIMARY_ADMINS = ['amanmulla.aws@gmail.com', 'altabmulla36@gmail.com']
 
+/* ── localStorage helpers ── */
+function getCachedSession() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return null
+    return JSON.parse(raw)
+  } catch {
+    return null
+  }
+}
+
+function setCachedSession(user, role) {
+  try {
+    localStorage.setItem(SESSION_KEY, JSON.stringify({ user, role, ts: Date.now() }))
+  } catch { /* quota exceeded – ignore */ }
+}
+
+export function clearCachedSession() {
+  try { localStorage.removeItem(SESSION_KEY) } catch {}
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
-  const [role, setRole] = useState(null)
-  const [loading, setLoading] = useState(true)
+  // Restore cached session instantly so the UI never flashes a loader
+  const cached = getCachedSession()
+  const [user, setUser] = useState(cached?.user || null)
+  const [role, setRole] = useState(cached?.role || null)
+  const [loading, setLoading] = useState(!cached) // skip loading if cache exists
   const handlingUser = useRef(false)
   const didInit = useRef(false)
 
@@ -26,6 +51,10 @@ export function AuthProvider({ children }) {
       if (session?.user) {
         handleUser(session.user)
       } else {
+        // No valid session — clear stale cache
+        clearCachedSession()
+        setUser(null)
+        setRole(null)
         setLoading(false)
       }
     })
@@ -36,11 +65,17 @@ export function AuthProvider({ children }) {
         didInit.current = true
         clearTimeout(hardTimeout)
         if (session?.user) await handleUser(session.user)
-        else setLoading(false)
+        else {
+          clearCachedSession()
+          setUser(null)
+          setRole(null)
+          setLoading(false)
+        }
       } else if (event === 'SIGNED_IN') {
         clearTimeout(hardTimeout)
         if (session?.user) await handleUser(session.user)
       } else if (event === 'SIGNED_OUT') {
+        clearCachedSession()
         setUser(null)
         setRole(null)
         setLoading(false)
@@ -48,6 +83,9 @@ export function AuthProvider({ children }) {
         // Silent refresh — no loading flash needed
         if (session?.user) {
           setUser(session.user)
+          // Update cache with fresh token data
+          const cachedRole = getCachedSession()?.role
+          if (cachedRole) setCachedSession(session.user, cachedRole)
         }
       } else {
         setLoading(false)
@@ -71,6 +109,7 @@ export function AuthProvider({ children }) {
       if (PRIMARY_ADMINS.includes(email)) {
         setUser(authUser)
         setRole('admin')
+        setCachedSession(authUser, 'admin')
         setLoading(false)
         upsertUser(authUser).catch(() => {})
         return
@@ -87,6 +126,7 @@ export function AuthProvider({ children }) {
         // Not in database = no access
         toast.error('Access denied. Ask an admin to add your email in User Management.')
         await signOut()
+        clearCachedSession()
         setUser(null)
         setRole(null)
         setLoading(false)
@@ -96,6 +136,7 @@ export function AuthProvider({ children }) {
       // User exists in DB — grant access with their role
       setUser(authUser)
       setRole(data.role)
+      setCachedSession(authUser, data.role)
       setLoading(false)
 
       // Keep DB record in sync with latest auth metadata

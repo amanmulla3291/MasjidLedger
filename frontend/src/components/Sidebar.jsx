@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink, Link, useNavigate } from 'react-router-dom'
 import { signOut } from '../lib/supabaseClient'
 import { useAuth } from '../hooks/useAuth'
 import toast from 'react-hot-toast'
@@ -17,10 +17,10 @@ export default function Sidebar() {
   return (
     <aside className="main-sidebar sidebar-dark-success elevation-4">
       {/* Brand */}
-      <a href="/dashboard" className="brand-link" style={{ textDecoration: 'none' }}>
+      <Link to="/dashboard" className="brand-link" style={{ textDecoration: 'none' }}>
         <span style={{ fontSize: '1.8rem', marginRight: '10px' }}>🕌</span>
         <span className="brand-text">Sunni Jamma Masjid, Tambave</span>
-      </a>
+      </Link>
 
       <div className="sidebar">
         <nav className="mt-2">

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import { Link } from 'react-router-dom'
 import { getDashboardStats, supabase } from '../lib/supabaseClient'
 import { formatCurrency, formatDate, MONTHS, getCurrentYear } from '../utils/helpers'
 import { Bar, Doughnut } from 'react-chartjs-2'
@@ -11,6 +12,26 @@ import {
 } from 'chart.js'
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement)
+
+/* ── Dashboard stats cache (5-min TTL) ── */
+const CACHE_KEY = 'masjid_dashboard_cache'
+const CACHE_TTL = 5 * 60 * 1000 // 5 minutes
+
+function getCachedStats() {
+  try {
+    const raw = localStorage.getItem(CACHE_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    if (Date.now() - parsed.ts > CACHE_TTL) return null // expired
+    return parsed.data
+  } catch { return null }
+}
+
+function setCachedStats(data) {
+  try {
+    localStorage.setItem(CACHE_KEY, JSON.stringify({ data, ts: Date.now() }))
+  } catch { /* quota exceeded */ }
+}
 
 function StatCard({ icon, iconBg, label, value, valueColor, sub }) {
   return (
@@ -35,17 +56,23 @@ const INCOME_COLORS   = ['#15803d','#0284c7','#7c3aed','#b45309','#0891b2','#be1
 export default function Dashboard() {
   const { role } = useAuth()
   const isAdmin = role === 'admin'
-  const [stats, setStats] = useState(null)
+  const cached = getCachedStats()
+  const [stats, setStats] = useState(cached)
   const [recentActivity, setRecentActivity] = useState([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(!cached)
   const year = getCurrentYear()
+  const fetched = useRef(false)
 
   useEffect(() => {
+    if (fetched.current) return
+    fetched.current = true
+
     Promise.all([
       getDashboardStats(),
       loadRecentActivity(),
     ]).then(([s]) => {
       setStats(s)
+      setCachedStats(s)
       setLoading(false)
     }).catch(() => setLoading(false))
   }, [])
@@ -75,8 +102,7 @@ export default function Dashboard() {
   const catLabels = Object.keys(stats?.categoryTotals || {})
   const catValues = Object.values(stats?.categoryTotals || {})
 
-  // Income category doughnut — computed from monthlyIncome by category if available
-  // Falls back to empty; getDashboardStats already returns incomeCategoryTotals if we add it
+  // Income category doughnut
   const incCatLabels = Object.keys(stats?.incomeCategoryTotals || {})
   const incCatValues = Object.values(stats?.incomeCategoryTotals || {})
 
@@ -179,7 +205,7 @@ export default function Dashboard() {
           <div className="card h-100">
             <div className="card-header d-flex align-items-center justify-content-between">
               <h5 className="card-title mb-0" style={{ fontFamily: 'Amiri, serif' }}>Recent Activity</h5>
-              <a href="/ledger" style={{ fontSize: '0.78rem', color: '#1a5c2a', textDecoration: 'none' }}>View all →</a>
+              <Link to="/ledger" style={{ fontSize: '0.78rem', color: '#1a5c2a', textDecoration: 'none' }}>View all →</Link>
             </div>
             <div className="card-body p-0" style={{ overflowY: 'auto', maxHeight: '340px' }}>
               {recentActivity.length === 0 ? (
@@ -323,14 +349,14 @@ export default function Dashboard() {
           <div className="d-flex flex-wrap" style={{ gap: '8px' }}>
             {isAdmin && (
               <>
-                <a href="/collections" className="btn btn-success btn-sm"><i className="fas fa-plus mr-1" /> Add Collection</a>
-                <a href="/expenses" className="btn btn-danger btn-sm"><i className="fas fa-plus mr-1" /> Add Expense</a>
-                <a href="/income" className="btn btn-outline-success btn-sm"><i className="fas fa-plus mr-1" /> Add Income</a>
+                <Link to="/collections" className="btn btn-success btn-sm"><i className="fas fa-plus mr-1" /> Add Collection</Link>
+                <Link to="/expenses" className="btn btn-danger btn-sm"><i className="fas fa-plus mr-1" /> Add Expense</Link>
+                <Link to="/income" className="btn btn-outline-success btn-sm"><i className="fas fa-plus mr-1" /> Add Income</Link>
               </>
             )}
-            <a href="/ramzan" className="btn btn-warning btn-sm"><i className="fas fa-moon mr-1" /> Ramzan</a>
-            <a href="/ledger" className="btn btn-info btn-sm"><i className="fas fa-book mr-1" /> Ledger</a>
-            {isAdmin && <a href="/reports" className="btn btn-secondary btn-sm"><i className="fas fa-download mr-1" /> Reports</a>}
+            <Link to="/ramzan" className="btn btn-warning btn-sm"><i className="fas fa-moon mr-1" /> Ramzan</Link>
+            <Link to="/ledger" className="btn btn-info btn-sm"><i className="fas fa-book mr-1" /> Ledger</Link>
+            {isAdmin && <Link to="/reports" className="btn btn-secondary btn-sm"><i className="fas fa-download mr-1" /> Reports</Link>}
           </div>
         </div>
       </div>

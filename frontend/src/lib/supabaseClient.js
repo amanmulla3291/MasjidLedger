@@ -94,13 +94,15 @@ export async function signInWithGoogle() {
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${window.location.origin}/`,
+      redirectTo: `${window.location.origin}/#/dashboard`,
     },
   })
   return { data, error }
 }
 
 export async function signOut() {
+  try { localStorage.removeItem('masjid_session') } catch {}
+  try { localStorage.removeItem('masjid_dashboard_cache') } catch {}
   const { error } = await supabase.auth.signOut()
   return { error }
 }
