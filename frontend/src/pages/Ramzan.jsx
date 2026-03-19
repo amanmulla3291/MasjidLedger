@@ -16,6 +16,8 @@ import FileUpload from '../components/FileUpload'
 import PageHeader from '../components/PageHeader'
 import toast from 'react-hot-toast'
 
+const CACHE_KEY = 'masjid_ramzan_cache'
+
 export default function Ramzan() {
   const { user, role } = useAuth()
   const isAdmin = role === 'admin'
@@ -60,21 +62,51 @@ export default function Ramzan() {
   }, [])
 
   async function loadYears() {
-    setLoadingYears(true)
+    // 1. Load instantly from cache
+    try {
+      const cached = localStorage.getItem(`${CACHE_KEY}_years`)
+      if (cached) {
+        const parsed = JSON.parse(cached)
+        setYears(parsed)
+        if (parsed.length > 0 && !selectedYear) setSelectedYear(parsed[0])
+        setLoadingYears(false)
+      }
+    } catch { /* ignore */ }
+
+    // 2. Fetch fresh data in background
+    if (!loadingYears && years.length === 0) setLoadingYears(true)
+
     const { data } = await getRamzanYears()
-    setYears(data || [])
-    if (data?.length > 0 && !selectedYear) setSelectedYear(data[0])
+    if (data) {
+      setYears(data)
+      try { localStorage.setItem(`${CACHE_KEY}_years`, JSON.stringify(data)) } catch {}
+      if (data.length > 0 && !selectedYear) setSelectedYear(data[0])
+    }
     setLoadingYears(false)
   }
 
   async function loadDetails(yearId) {
+    // Load from cache first
+    try {
+      const cachedContribs = localStorage.getItem(`${CACHE_KEY}_contribs_${yearId}`)
+      const cachedExpenses = localStorage.getItem(`${CACHE_KEY}_expenses_${yearId}`)
+      if (cachedContribs) setContributions(JSON.parse(cachedContribs))
+      if (cachedExpenses) setRamzanExpenses(JSON.parse(cachedExpenses))
+    } catch { /* ignore */ }
+
     try {
       const [c, e] = await Promise.all([
         getRamzanContributions(yearId),
         getRamzanExpenses(yearId),
       ])
-      setContributions(c.data || [])
-      setRamzanExpenses(e.data || [])
+      if (c.data) {
+        setContributions(c.data)
+        try { localStorage.setItem(`${CACHE_KEY}_contribs_${yearId}`, JSON.stringify(c.data)) } catch {}
+      }
+      if (e.data) {
+        setRamzanExpenses(e.data)
+        try { localStorage.setItem(`${CACHE_KEY}_expenses_${yearId}`, JSON.stringify(e.data)) } catch {}
+      }
     } catch {
       toast.error('Failed to load Ramzan data. Please refresh.')
     }
@@ -411,17 +443,17 @@ export default function Ramzan() {
           ) : (
             <>
               {/* Year header */}
-              <div className="card mb-3" style={{ background: 'linear-gradient(135deg, #1a2035, #253050)', color: '#fff', border: 'none' }}>
+              <div className="card mb-3 bg-navy shadow-sm">
                 <div className="card-body d-flex align-items-start justify-content-between">
                   <div>
-                    <h4 style={{ fontFamily: 'Amiri, serif', margin: 0, color: '#c9a227' }}>Ramzan {selectedYear.year}</h4>
-                    <p style={{ margin: '6px 0 0', opacity: 0.75, fontSize: '0.9rem' }}>
+                    <h4 style={{ fontFamily: 'Amiri, serif', margin: 0 }} className="text-warning">Ramzan {selectedYear.year}</h4>
+                    <p style={{ margin: '6px 0 0', opacity: 0.9, fontSize: '0.9rem' }}>
                       Hafiz <EditableField field="hafiz_name" label="Hafiz Name" type="text" displayValue={selectedYear.hafiz_name} />
                     </p>
-                    <p style={{ margin: '6px 0 0', opacity: 0.75, fontSize: '0.85rem' }}>
+                    <p style={{ margin: '6px 0 0', opacity: 0.9, fontSize: '0.85rem' }}>
                       Expected Salary: <EditableField field="expected_salary" label="Expected Salary" type="number" displayValue={formatCurrency(selectedYear.expected_salary)} />
                     </p>
-                    {selectedYear.notes && <p style={{ margin: '4px 0 0', opacity: 0.55, fontSize: '0.8rem' }}>{selectedYear.notes}</p>}
+                    {selectedYear.notes && <p style={{ margin: '4px 0 0', opacity: 0.7, fontSize: '0.8rem' }}>{selectedYear.notes}</p>}
                   </div>
                   <button className="btn btn-warning btn-sm" onClick={handleExportPDF}>
                     <i className="fas fa-file-pdf mr-1" /> Eid Report PDF
@@ -431,43 +463,39 @@ export default function Ramzan() {
 
               {/* Stats row */}
               <div className="row mb-3">
-                <div className="col-6 col-md-3 mb-2">
-                  <div className="stat-card">
-                    <div className="stat-card-icon" style={{ background: '#1a5c2a' }}><i className="fas fa-users" /></div>
-                    <div className="stat-card-body">
-                      <div className="stat-card-label">Members</div>
-                      <div className="stat-card-value">{contributions.length}</div>
+                <div className="col-12 col-sm-6 col-md-3 mb-2">
+                  <div className="info-box shadow-sm mb-0">
+                    <span className="info-box-icon bg-success"><i className="fas fa-users" /></span>
+                    <div className="info-box-content">
+                      <span className="info-box-text">Members</span>
+                      <span className="info-box-number">{contributions.length}</span>
                     </div>
                   </div>
                 </div>
-                <div className="col-6 col-md-3 mb-2">
-                  <div className="stat-card">
-                    <div className="stat-card-icon" style={{ background: '#c9a227' }}><i className="fas fa-rupee-sign" /></div>
-                    <div className="stat-card-body">
-                      <div className="stat-card-label">Collected</div>
-                      <div className="stat-card-value">{formatCurrency(totalContribs)}</div>
+                <div className="col-12 col-sm-6 col-md-3 mb-2">
+                  <div className="info-box shadow-sm mb-0">
+                    <span className="info-box-icon bg-warning text-white"><i className="fas fa-rupee-sign text-white" /></span>
+                    <div className="info-box-content">
+                      <span className="info-box-text">Collected</span>
+                      <span className="info-box-number">{formatCurrency(totalContribs)}</span>
                     </div>
                   </div>
                 </div>
-                <div className="col-6 col-md-3 mb-2">
-                  <div className="stat-card">
-                    <div className="stat-card-icon" style={{ background: '#e65100' }}><i className="fas fa-clock" /></div>
-                    <div className="stat-card-body">
-                      <div className="stat-card-label">Pending</div>
-                      <div className="stat-card-value" style={{ color: pendingContribs.length > 0 ? '#e65100' : '#15803d' }}>
-                        {pendingContribs.length + notContributedMembers.length}
-                      </div>
+                <div className="col-12 col-sm-6 col-md-3 mb-2">
+                  <div className="info-box shadow-sm mb-0">
+                    <span className="info-box-icon bg-danger"><i className="fas fa-clock" /></span>
+                    <div className="info-box-content">
+                      <span className="info-box-text">Pending</span>
+                      <span className="info-box-number text-danger">{pendingContribs.length + notContributedMembers.length}</span>
                     </div>
                   </div>
                 </div>
-                <div className="col-6 col-md-3 mb-2">
-                  <div className="stat-card">
-                    <div className="stat-card-icon" style={{ background: balance >= 0 ? '#1565c0' : '#b71c1c' }}><i className="fas fa-balance-scale" /></div>
-                    <div className="stat-card-body">
-                      <div className="stat-card-label">Balance</div>
-                      <div className="stat-card-value" style={{ color: balance >= 0 ? '#15803d' : '#b91c1c' }}>
-                        {formatCurrency(balance)}
-                      </div>
+                <div className="col-12 col-sm-6 col-md-3 mb-2">
+                  <div className="info-box shadow-sm mb-0">
+                    <span className={`info-box-icon ${balance >= 0 ? 'bg-primary' : 'bg-danger'}`}><i className="fas fa-balance-scale" /></span>
+                    <div className="info-box-content">
+                      <span className="info-box-text">Balance</span>
+                      <span className={`info-box-number ${balance >= 0 ? 'text-success' : 'text-danger'}`}>{formatCurrency(balance)}</span>
                     </div>
                   </div>
                 </div>
